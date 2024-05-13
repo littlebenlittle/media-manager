@@ -1,0 +1,14 @@
+FROM docker.io/library/golang:alpine AS BUILDER
+
+WORKDIR /src
+COPY . .
+RUN go mod download
+RUN go build -o /convert .
+
+
+FROM docker.io/library/alpine:latest
+
+RUN apk update && apk add ffmpeg
+COPY --from=BUILDER /convert /convert
+
+CMD [ "/convert" ]

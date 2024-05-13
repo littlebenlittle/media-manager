@@ -1,0 +1,43 @@
+[package]
+name = "ui"
+version = "0.1.0"
+edition = "2021"
+authors = ["ben little <ben.little@benlittle.dev>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+leptos = { version = "0.6", features = ["csr", "nightly"] }
+leptos_meta = { version = "0.6", features = ["csr", "nightly"] }
+leptos_router = { version = "0.6", features = ["csr", "nightly"] }
+console_log = "1"
+log = "0.4"
+console_error_panic_hook = "0.1"
+anyhow = "1.0.83"
+serde = "1.0.201"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "Window",
+    "Location",
+]
+
+[dependencies.reqwest-wasm]
+version = "0.11.16"
+features = [
+    "json",
+]
+
+[dev-dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+web-sys = { version = "0.3", features = ["Document", "Window"] }
+
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
