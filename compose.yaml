@@ -1,4 +1,10 @@
 services:
+  trunk:
+    build: ./trunk
+    command: [ "trunk", "build", "--release" ]
+    working_dir: /ui
+    volumes:
+    - ./ui:/ui
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     volumes:
