@@ -16,18 +16,15 @@ console_error_panic_hook = "0.1"
 anyhow = "1.0.83"
 serde = "1.0.201"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
+gloo-net = { version = "0.5.0", features = ["websocket", "http", "eventsource"] }
+futures = "0.3.30"
+leptos-use = "0.10.10"
 
 [dependencies.web-sys]
 version = "0.3"
 features = [
     "Window",
     "Location",
-]
-
-[dependencies.reqwest-wasm]
-version = "0.11.16"
-features = [
-    "json",
 ]
 
 [dev-dependencies]

@@ -2,9 +2,13 @@ services:
   trunk:
     build: ./trunk
     command: [ "trunk", "build", "--release" ]
+    network_mode: host
     working_dir: /ui
+    environment:
+    - CARGO_TARGET_DIR=/target
     volumes:
-    - ./ui:/ui
+    - ./ui:/ui:rw
+    - rust-cache:/target:rw
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     volumes:
@@ -42,3 +46,4 @@ volumes:
   complete: {}
   incomplete: {}
   webm: {}
+  rust-cache: {}
