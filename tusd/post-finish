@@ -1,0 +1,6 @@
+#!/bin/sh
+
+exec 1>&2
+path=$(jq -r '.Upload.Storage.Path' </dev/stdin)
+mv "$path" /complete/
+rm "$path.info"

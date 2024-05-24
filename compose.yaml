@@ -2,7 +2,6 @@ services:
   trunk:
     build: ./trunk
     command: [ "trunk", "build", "--release" ]
-    network_mode: host
     working_dir: /ui
     environment:
     - CARGO_TARGET_DIR=/target
@@ -18,7 +17,8 @@ services:
   api:
     build:
       context: ./service
-      dockerfile: Containerfile.dev
+      dockerfile: Containerfile
+    restart: always
     working_dir: /service
     volumes:
     - ./service:/service:rw
@@ -26,6 +26,14 @@ services:
     - webm:/webm:rw
     - gopath:/go:rw
     - gocache:/root/.cache/go:rw
+  tusd:
+    image: docker.io/tusproject/tusd:v1.9
+    command: -behind-proxy -upload-dir=/data -hooks-dir=/hooks
+    user: "0"
+    volumes:
+    - tusd-data:/data
+    - complete:/complete
+    - ./tusd:/hooks:ro
   nginx:
     image: docker.io/library/nginx:latest
     ports:
@@ -37,13 +45,15 @@ services:
     - webm:/www/media/webm:ro
     depends_on:
     - api
+    - tusd
     - transmission
 
 volumes:
-  gopath: {}
-  gocache: {}
-  config: {}
-  complete: {}
-  incomplete: {}
-  webm: {}
-  rust-cache: {}
+  gopath:
+  gocache:
+  config:
+  complete:
+  incomplete:
+  webm:
+  rust-cache:
+  tusd-data:

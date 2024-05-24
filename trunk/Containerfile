@@ -4,3 +4,6 @@ RUN rustup default nightly && rustup target add wasm32-unknown-unknown
 RUN curl -Lo trunk.tar.gz https://github.com/trunk-rs/trunk/releases/download/v0.20.1/trunk-x86_64-unknown-linux-gnu.tar.gz \
     && tar -C /usr/local/cargo/bin -xf trunk.tar.gz \
     && rm trunk.tar.gz
+COPY entrypoint.sh /entrypoint.sh
+
+CMD [ "/entrypoint.sh" ]

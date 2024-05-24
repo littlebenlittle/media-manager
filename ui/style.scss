@@ -81,25 +81,42 @@ nav ul {
 #player {
   height: 70vh;
   width: 85vw;
+  max-width: 1300px;
   display: grid;
-  grid-template-columns: 256px 5fr 256px;
-  grid-template-rows: auto;
+  grid-template-columns: 256px 1fr 256px;
+  grid-template-rows: 50vh 1fr 20vh;
   grid-template-areas:
-    "selector video ctl";
+    "selector video ctl"
+    "selector info  ctl"
+    "upload   info  ctl";
   column-gap: 2rem;
   row-gap: 2rem;
 }
 
+#upload-form {
+  grid-area: upload;
+  display: flex;
+  flex-direction: column;
+
+  >* {
+    padding-bottom: 1rem;
+  }
+}
 
 #media-selector {
   grid-area: selector;
   border-radius: 8px;
-  background-color: #121212;
-  // display: inline-block;
-  // text-align: left;
 }
 
 #media-selector {
+
+  ul {
+    background-color: #121212;
+    padding-left: 0;
+    height: 100%;
+    overflow-y: scroll;
+  }
+
   li {
     padding: 1rem;
     overflow: hidden;
@@ -135,25 +152,34 @@ nav ul {
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
   }
-
-  ul {
-    padding-left: 0;
-    height: 100%;
-  }
 }
 
 #video {
   grid-area: video;
-  
+
   video {
     margin-bottom: 1rem;
+  }
+
+  #unsupported-video {
+    height: 30vw;
+    max-height: 45vh;
+    align-content: center;
+    background-color: grey;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    aspect-ratio: 16/9;
+    display: grid;
+    justify-content: center;
+    align-content: center;
   }
 }
 
 #video-info {
+  grid-area: info;
   text-align: left;
 
-  > * {
+  >* {
     margin-bottom: 1rem;
   }
 
@@ -161,23 +187,49 @@ nav ul {
     font-size: larger;
   }
 
-  input[name="title"] {
-    font-size: larger;
+  table {
+    width: 100%;
+  }
+
+  td {
+    text-align: left;
+  }
+
+  td:first-child {
+    width: 25%;
+  }
+
+  td>* {
+    padding: 0;
   }
 }
 
 #video-control-panel {
   grid-area: ctl;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   justify-content: left;
-  grid-template-columns: 1fr;
-  grid-template-rows: 64px 170px;
-  row-gap: 8px;
-}
 
-#video-control-panel>* {
-  width: fit-content;
-  margin-bottom: 2rem;
+  >* {
+    width: 100%;
+  }
+
+  >*:not(:first-child) {
+    padding-top: 1rem;
+  }
+
+  >*:not(:last-child) {
+    padding-bottom: 2rem;
+    border-bottom: 3px solid #444444;
+  }
+
+  #video-download-button {
+    display: flex;
+
+    >a {
+      width: fit-content;
+    }
+  }
 }
 
 #video-control-panel input {
@@ -194,7 +246,6 @@ nav ul {
 }
 
 #media-convert-form {
-  width: fit-content;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 12px 1fr 12px 1fr;
@@ -257,8 +308,4 @@ nav ul {
 
 #select-media-source-notice {
   margin: 1rem;
-}
-
-#download-button {
-  width: fit-content;
 }

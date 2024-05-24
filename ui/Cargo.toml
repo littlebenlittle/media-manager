@@ -18,13 +18,31 @@ serde = "1.0.201"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 gloo-net = { version = "0.5.0", features = ["websocket", "http", "eventsource"] }
 futures = "0.3.30"
-leptos-use = "0.10.10"
+serde_json = "1.0.117"
+wasm-bindgen-futures = "0.4.42"
+js-sys = "0.3.69"
+reqwest = "0.12.4"
+sha2 = "0.10.8"
+
+[dependencies.leptos-use]
+version = "0.10.10"
+features = [
+    "serde",
+]
 
 [dependencies.web-sys]
 version = "0.3"
 features = [
     "Window",
     "Location",
+    "Event",
+    "EventTarget",
+    "HtmlInputElement",
+    "Blob",
+    "File",
+    "FileList",
+    "FileReader",
+    "ReadableStream",
 ]
 
 [dev-dependencies]
