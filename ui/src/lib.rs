@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -9,9 +10,11 @@ mod components;
 mod data;
 mod pages;
 
-// hack for in-progress crate
-mod doc_rs;
-use doc_rs::Doc;
+use leptos_use::utils::JsonCodec;
+use leptos_use::{use_event_source_with_options, UseEventSourceOptions, UseEventSourceReturn};
+
+// data types
+use data::{Media, MediaLibrary};
 
 // Top-Level pages
 use crate::pages::home::Home;
@@ -20,8 +23,16 @@ use crate::pages::player::{Player, VideoDashboard};
 
 #[macro_export]
 macro_rules! log {
-    ( $e:expr ) => {
-        web_sys::console::log_1(&format!("{} {}: {}", file! {}, line! {}, $e.to_string()).into())
+    ( $expr:expr ) => {
+        web_sys::console::log_1(
+            &format!("{} {}: {}", file! {}, line! {}, $expr.to_string()).into()
+        )
+    };
+    ( $lit:literal $(, $expr:expr)* ) => {
+        let msg = format!($lit, $($expr)*);
+        web_sys::console::log_1(
+            &format!("{} {}: {}", file! {}, line! {}, msg).into()
+        )
     };
 }
 
@@ -29,19 +40,50 @@ macro_rules! log {
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let media_library = create_resource(
+    let new_media = {
+        let UseEventSourceReturn { data, .. } = use_event_source_with_options::<Media, JsonCodec>(
+            format!("{}/api/media_library/events", client::get_origin()).as_str(),
+            UseEventSourceOptions::default()
+                .immediate(true)
+                .named_events(["new".to_owned()]),
+        );
+        data
+    };
+
+    let media_library = create_rw_signal(MediaLibrary::default());
+    let init_media_library = create_local_resource(
         || (),
-        |_: ()| async move {
+        move |_: ()| async move {
             match client::Client::default().media_library().await {
                 Err(e) => {
                     log!(e);
                     None
                 }
-                Ok(media_library) => Some(media_library),
+                Ok(lib) => {
+                    log!("media library loaded");
+                    Some(lib)
+                }
             }
         },
     );
 
+    create_effect(move |_| {
+        if let Some(Some(ib)) = init_media_library.get() {
+            media_library.set(ib);
+        }
+    });
+
+    create_effect(move |_| {
+        if let Some(new_media) = new_media.get() {
+            media_library.update(move |lib| {
+                if let Err(e) = lib.insert(new_media) {
+                    log!(e)
+                }
+            })
+        }
+    });
+
+    provide_context(init_media_library);
     provide_context(media_library);
 
     view! {
@@ -53,8 +95,12 @@ pub fn App() -> impl IntoView {
             <div id="nav-container">
                 <nav>
                     <ul>
-                        <li><a href="/">"Home"</a></li>
-                        <li><a href="/player">"Player"</a></li>
+                        <li>
+                            <a href="/">"Home"</a>
+                        </li>
+                        <li>
+                            <a href="/player">"Player"</a>
+                        </li>
                     </ul>
                 </nav>
             </div>
@@ -66,11 +112,17 @@ pub fn App() -> impl IntoView {
                     <Route path="/" view=Home/>
                     <Route path="/player" view=Player>
                         <Route path=":id" view=VideoDashboard/>
-                        <Route path="" view=|| view!{
-                            <div id="select-media-source-notice">
-                                <h3>"<< Select Media Source"</h3>
-                            </div>
-                        }/>
+                        <Route
+                            path=""
+                            view=|| {
+                                view! {
+                                    <div id="select-media-source-notice">
+                                        <h3>"<< Select Media Source"</h3>
+                                    </div>
+                                }
+                            }
+                        />
+
                     </Route>
                     <Route path="/*" view=NotFound/>
                 </Routes>
