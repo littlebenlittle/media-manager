@@ -15,4 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - run: grep -r 'TODO' .github
+      - run: |
+          grep -r 'TODO' .github || exit 0
+          exit 1
