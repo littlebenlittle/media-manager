@@ -3,7 +3,7 @@ run-name: GitHub Pages
 on:
   pull_request:
     # TODO switch to main
-    branches: [feature/dry-demo]
+    branches: [ci/gh-pages]
     types:
       - closed
 
