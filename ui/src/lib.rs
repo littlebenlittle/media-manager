@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use std::collections::{BTreeMap, HashMap};
-
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -10,19 +8,11 @@ use leptos_router::*;
 mod client;
 mod components;
 mod data;
-mod fake;
 mod pages;
-mod store;
 
 // data types
-use data::Metadata;
-use leptos_use::utils::JsonCodec;
-use leptos_use::{
-    use_event_source, use_event_source_with_options, use_timeout_fn, UseEventListenerOptions,
-    UseEventSourceOptions, UseEventSourceReturn, UseTimeoutFnReturn,
-};
-use serde::{Deserialize, Serialize};
-use store::{LocalStorage, MediaStorageEvent, ID};
+use data::{MediaCollection, Metadata, SyncResponse, ID};
+use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 // Components
 use crate::components::SyncButton;
@@ -57,14 +47,6 @@ macro_rules! unwrap_js {
         }
     };
 }
-
-#[derive(Debug, Clone, PartialEq)]
-enum StorageEvent {
-    Insert(ID, Metadata),
-    Remove(ID),
-}
-
-type MediaCollection = HashMap<ID, Metadata>;
 
 #[derive(Clone)]
 struct Context {
@@ -143,7 +125,7 @@ pub fn App() -> impl IntoView {
 
     // Sync Effects
 
-    fn sync(res: client::SyncResponse, media: &mut MediaCollection) {
+    fn sync(res: SyncResponse, media: &mut MediaCollection) {
         for (id, m) in res.missing {
             media.insert(id, m);
         }
@@ -216,6 +198,12 @@ pub fn App() -> impl IntoView {
                 <div id="main-heading">
                     <div id="heading-ctr">
                         <h1>"Media Manager"</h1>
+
+                        {
+                            #[cfg(feature = "demo")]
+                            view! { <h2>"Demo Mode"</h2> }
+                        }
+
                     </div>
                     // TODO replace with sync indicators
                     <div id="sync-buttons">

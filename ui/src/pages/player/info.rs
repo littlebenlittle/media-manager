@@ -72,7 +72,7 @@ pub fn Info() -> impl IntoView {
                 <tr>
                     <td>"URL"</td>
                     <td>
-                        <span>{format!("{}/{}", crate::client::origin(), url)}</span>
+                        <span>{url}</span>
                     </td>
                 </tr>
             </table>

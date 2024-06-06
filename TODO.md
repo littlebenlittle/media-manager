@@ -20,6 +20,10 @@
 - [ ] Improve metadata automation
     - [ ] `ffprobe` to mine metadata
     - [ ] Use collections for nested directories
+    
+## Maintenance
+
+- [ ] Split resumable uploads into a separate crate
 
 ## Greenfield
 

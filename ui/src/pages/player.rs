@@ -1,5 +1,5 @@
 use crate::Context;
-use crate::{client, log, store::ID};
+use crate::{log, data::ID, client};
 use leptos::*;
 use leptos_router::*;
 
@@ -118,7 +118,7 @@ fn Video(url: String) -> impl IntoView {
     view! {
         <div id="video">
             <video controls>
-                <source src=format!("{}/{}", crate::client::origin(), url)/>
+                <source src=url/>
             </video>
         </div>
     }

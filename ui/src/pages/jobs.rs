@@ -1,4 +1,4 @@
-use crate::{components::LoremIpsum, log};
+use crate::{components::LoremIpsum, log, client};
 use leptos::*;
 use leptos_use::{
     core::ConnectionReadyState, use_document, use_event_source_with_options, utils::JsonCodec,
@@ -20,7 +20,7 @@ struct Job {
 pub fn JobsDashboard() -> impl IntoView {
     let jobs = create_rw_signal(Vec::<Job>::new());
     let UseEventSourceReturn { data, .. } = use_event_source_with_options::<Job, JsonCodec>(
-        format!("{}/api/jobs", crate::client::get_origin()).as_str(),
+        format!("{}/api/jobs", client::origin()).as_str(),
         UseEventSourceOptions::default(),
     );
     create_effect(move |_| {
@@ -112,7 +112,7 @@ pub fn LogMessages(job_id: String, show_logs: ReadSignal<bool>) -> impl IntoView
         close,
         ..
     } = use_event_source_with_options::<LogMessage, JsonCodec>(
-        format!("{}/api/job/{}/logs", crate::client::get_origin(), job_id).as_str(),
+        format!("{}/api/job/{}/logs", client::origin(), job_id).as_str(),
         UseEventSourceOptions::default().immediate(false),
     );
     let node_ref = create_node_ref::<html::Pre>();

@@ -26,12 +26,12 @@ func main() {
 
 	router := gin.Default()
 
-	router.GET("/media", func(c *gin.Context) {
+	router.GET("/media", origin, func(c *gin.Context) {
 		if media, err := m.Media.List(); err != nil {
 			log.Printf("could not list media: %s", err)
 			c.Status(http.StatusInternalServerError)
 		} else {
-			res := to_client_media_map(dir, media)
+			res := to_client_media_map(dir, c.MustGet("origin").(string), media)
 			c.JSON(http.StatusOK, res)
 		}
 	})
@@ -68,7 +68,7 @@ func main() {
 		})
 	})
 
-	router.POST("/sync/media", func(c *gin.Context) {
+	router.POST("/sync/media", origin, func(c *gin.Context) {
 		var update map[string]map[string]string
 		if err := c.BindJSON(&update); err != nil {
 			c.String(http.StatusBadRequest, "%s", err)
@@ -84,18 +84,16 @@ func main() {
 		for id, server_t := range media {
 			log.Printf("id: %s", id.String())
 			if client_t, ok := update[id.String()]; ok {
-				log.Printf("client & server both have: %s", id.String())
 				server_t.Merge(client_t)
 				m.Media.Assign(id, server_t)
 				delete(update, id.String())
 			} else {
-				log.Printf("client is missing id: %s", id.String())
-				missing[id.String()] = to_client_media(dir, server_t)
+				origin := c.MustGet("origin").(string)
+				missing[id.String()] = to_client_media(dir, origin, server_t)
 			}
 		}
 		unknown := make([]string, 0)
 		for id := range update {
-			log.Printf("client has unknown id: %s", id)
 			unknown = append(unknown, id)
 		}
 		c.JSON(http.StatusCreated, gin.H{
@@ -244,7 +242,7 @@ func map_string_to_id[T any](i map[string]T) (map[ID]T, error) {
 	return r, nil
 }
 
-func to_client_media(dir string, media Media) gin.H {
+func to_client_media(dir string, origin string, media Media) gin.H {
 	path, err := filepath.Rel(dir, media.Path)
 	if err != nil {
 		log.Panicf("%s", err)
@@ -253,14 +251,29 @@ func to_client_media(dir string, media Media) gin.H {
 		"title":     media.Title,
 		"format":    media.Format,
 		"shortname": media.Shortname,
-		"url":       "media/" + path,
+		"url":       origin + "/media/" + path,
 	}
 }
 
-func to_client_media_map(dir string, media map[ID]Media) map[string]gin.H {
+func to_client_media_map(dir string, origin string, media map[ID]Media) map[string]gin.H {
 	ret := make(map[string]gin.H, len(media))
 	for id, m := range media {
-		ret[id.String()] = to_client_media(dir, m)
+		ret[id.String()] = to_client_media(dir, origin, m)
 	}
 	return ret
+}
+
+type Location struct {
+	Scheme string
+	Host   string
+}
+
+func origin(c *gin.Context) {
+	host := c.Request.Host
+	scheme := c.Request.URL.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+	log.Printf("\n%s%s\n", scheme, host)
+	c.Set("origin", scheme+"://"+host)
 }
