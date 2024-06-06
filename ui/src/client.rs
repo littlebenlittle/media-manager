@@ -1,144 +1,220 @@
-use crate::data::{Media, MediaLibrary};
+use crate::{
+    data::Metadata,
+    log,
+    store::{Doc, ID},
+    unwrap_js, MediaCollection,
+};
 use gloo_net::{http::Request, websocket::futures::WebSocket};
 use js_sys::wasm_bindgen::JsValue;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use wasm_bindgen_futures::JsFuture;
 
-macro_rules! unwrap_js {
-    ($result:expr) => {
-        match $result {
-            Ok(v) => v,
-            Err(e) => anyhow::bail!(e.as_string().unwrap()),
-        }
-    };
-}
-
-pub struct Client {
-    origin: String,
-}
-
-impl Client {
-    pub async fn media_library(&self) -> anyhow::Result<MediaLibrary> {
-        let url = format!("{}/api/media_library", self.origin);
-        let media_library = Request::get(&url)
-            .send()
-            .await?
-            .json::<MediaLibrary>()
-            .await?;
-        Ok(media_library)
-    }
-
-    pub async fn convert(&self, req: serde_json::Value) -> anyhow::Result<()> {
-        let url = format!("{}/api/convert", self.origin);
-        let query: Vec<(&str, String)> = ["id", "format", "hardsub", "overwrite"]
-            .into_iter()
-            .map(|field| (field, req.get(field).unwrap().to_string()))
-            .collect();
-        Request::get(&url).query(query).send().await?;
-        // TODO report network errors
-        // TODO get event stream to follow progress
-        Ok(())
-    }
-
-    // non-resumable wrapper around resumable upload
-    pub async fn upload<'a>(&self, file: &'a web_sys::File) -> anyhow::Result<()> {
-        let (mut upload, location) = self.new_upload(file).await?;
-        self.continue_upload(&mut upload, &location).await
-    }
-
-    // Register a new resumable upload using tus protocol
-    pub async fn new_upload<'a>(
-        &self,
-        file: &'a web_sys::File,
-    ) -> anyhow::Result<(ResumableUpload<'a>, String)> {
-        let upload = unwrap_js!(new_upload(&file, 800_000).await);
-        let res = gloo_net::http::Request::post(format!("{}/files", self.origin).as_str())
-            .header("Content-Length", "0")
-            .header("Upload-Length", upload.size().to_string().as_str())
-            .header("Tus-Resumable", "1.0.0")
-            // .header("Upload-Metadata", format!("filename {}", base64!(file.name()))
-            .header("Content-Type", "application/offset+octet-stream")
-            .send()
-            .await?;
-        if res.status() != 201 {
-            anyhow::bail!("expected 201 Created")
-        }
-        let location = res.headers().get("Location").unwrap();
-        return Ok((upload, location));
-    }
-
-    pub async fn continue_upload<'a>(
-        &self,
-        upload: &'a mut ResumableUpload<'a>,
-        location: &str,
-    ) -> anyhow::Result<()> {
-        let chunk_sz = upload.chunk_size();
-        let nchunks = upload.nchunks();
-        let mut sent_ok = vec![true; nchunks as usize];
-        let mut bad_res = Option::<gloo_net::http::Response>::None;
-        for (chunk, index) in upload.iter_unsent() {
-            let offset = if index < nchunks {
-                index * chunk_sz
-            } else {
-                chunk.size() as i32
-            };
-            let arr = unwrap_js!(JsFuture::from(chunk.array_buffer()).await);
-            let res = gloo_net::http::Request::patch(location)
-                .header("Content-Length", chunk_sz.to_string().as_str())
-                .header("Upload-Offset", offset.to_string().as_str())
-                .header("Content-Type", "application/offset+octet-stream")
-                .header("Tus-Resumable", "1.0.0")
-                .body(arr)?
-                .send()
-                .await?;
-            if res.status() != 204 {
-                bad_res = Some(res);
-                break;
-            }
-            sent_ok[index as usize] = true
-        }
-        for i in 0..nchunks {
-            if sent_ok[i as usize] {}
-        }
-        if let Some(_) = bad_res {
-            anyhow::bail!("bad response")
-        }
-        Ok(())
-    }
-
-    pub async fn update_media(&self, media: &Media) -> anyhow::Result<()> {
-        let url = format!("{}/api/media_library/{}", self.origin, media.id);
-        let res = Request::put(&url).json(media)?.send().await?;
-        if res.status() != 202 {
-            anyhow::bail!("update was not accepted")
-        }
-        Ok(())
-    }
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self {
-            origin: get_origin(),
-        }
-    }
+// Origin of the current page.
+#[inline]
+pub fn get_origin() -> String {
+    // web_sys::window()
+    //     .expect("window")
+    //     .location()
+    //     .origin()
+    //     .expect("window.location.origin")
+    // vv DEV vv
+    let location = web_sys::window().expect("window").location();
+    let protocol = location.protocol().expect("window.location.protocol");
+    let hostname = location.hostname().expect("window.location.hostname");
+    let base_url = protocol + "//" + &hostname + ":8090";
+    base_url
+    // ^^ DEV ^^
 }
 
 #[inline]
-pub fn get_origin() -> String {
-    web_sys::window()
-        .expect("window")
-        .location()
-        .origin()
-        .expect("window.location.origin")
-    // DEV
-    // let location = web_sys::window().expect("window").location();
-    // let protocol = location.protocol().expect("window.location.protocol");
-    // let hostname = location.hostname().expect("window.location.hostname");
-    // let base_url = protocol + "//" + &hostname + ":8090";
-    // base_url
+pub fn origin() -> String {
+    // web_sys::window()
+    //     .expect("window")
+    //     .location()
+    //     .origin()
+    //     .expect("window.location.origin")
+    // vv DEV vv
+    let location = web_sys::window().expect("window").location();
+    let protocol = location.protocol().expect("window.location.protocol");
+    let hostname = location.hostname().expect("window.location.hostname");
+    let base_url = protocol + "//" + &hostname + ":8090";
+    base_url
+    // ^^ DEV ^^
 }
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+enum MediaFormat {
+    Webm,
+    Ogg,
+    Mp4,
+}
+
+use std::{collections::HashMap, fmt};
+
+impl fmt::Display for MediaFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Webm => write!(f, "webm"),
+            Self::Ogg => write!(f, "ogg"),
+            Self::Mp4 => write!(f, "mp4"),
+        }
+    }
+}
+
+/// Metadata for a media blob.
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Media {
+    /// ID of the media blob itself
+    pub id: ID,
+    pub title: String,
+    pub format: MediaFormat,
+    pub shortname: String,
+}
+
+impl TryFrom<Doc> for Media {
+    type Error = &'static str;
+    fn try_from(value: Doc) -> Result<Self, Self::Error> {
+        match (
+            value.get("id"),
+            value.get("title"),
+            value.get("format"),
+            value.get("shortname"),
+        ) {
+            (
+                Some(Doc::Val(id)),
+                Some(Doc::Val(title)),
+                Some(Doc::Val(format)),
+                Some(Doc::Val(shortname)),
+            ) => {
+                let format = match format.as_str() {
+                    "webm" => MediaFormat::Webm,
+                    "ogg" => MediaFormat::Ogg,
+                    "mp4" => MediaFormat::Mp4,
+                    _ => return Err("invalid media format"),
+                };
+                Ok(Self {
+                    id: id.clone().into(),
+                    title: title.clone(),
+                    format,
+                    shortname: shortname.clone(),
+                })
+            }
+            __ => Err("missing fields"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct MediaSyncResponse {
+    pub have: Vec<Doc>,
+    pub want: Vec<ID>,
+}
+
+/// Synchronization request. Returns `None` if the web request
+/// fails, otherwise returns a pair `(have, want)` of IDs that
+/// the server has but the client doesn't and vice versa.
+pub async fn media_sync(ids: &Vec<ID>) -> anyhow::Result<MediaSyncResponse> {
+    let url = format!("{}/api/media/sync", get_origin());
+    let res = Request::post(&url)
+        .json(ids)?
+        .send()
+        .await?
+        .json::<MediaSyncResponse>()
+        .await?;
+    Ok(res)
+}
+
+/// Shares media with the server. Returns `None` if the web
+/// request fails.
+pub async fn media_share(media: &Vec<Doc>) -> anyhow::Result<()> {
+    let url = format!("{}/api/media/share", get_origin());
+    let res = Request::post(&url).json(media)?.send().await?;
+    Ok(())
+}
+
+pub async fn convert(req: serde_json::Value) -> anyhow::Result<()> {
+    let url = format!("{}/api/jobs", get_origin());
+    Request::post(&url).json(&req)?.send().await?;
+    // TODO report network errors
+    // TODO get event stream to follow progress
+    Ok(())
+}
+
+// non-resumable wrapper around resumable upload
+pub async fn upload<'a>(file: &'a web_sys::File) -> anyhow::Result<()> {
+    let (mut upload, location) = new_upload(file).await?;
+    continue_upload(&mut upload, &location).await
+}
+
+// Register a new resumable upload using tus protocol
+pub async fn new_upload<'a>(
+    file: &'a web_sys::File,
+) -> anyhow::Result<(ResumableUpload<'a>, String)> {
+    let upload = unwrap_js!(new_resumable_upload(&file, 800_000).await);
+    let res = gloo_net::http::Request::post(format!("{}/files", get_origin()).as_str())
+        .header("Content-Length", "0")
+        .header("Upload-Length", upload.size().to_string().as_str())
+        .header("Tus-Resumable", "1.0.0")
+        // TODO include filename and content hash
+        // .header("Upload-Metadata", format!("filename {}", base64!(file.name()))
+        .header("Content-Type", "application/offset+octet-stream")
+        .send()
+        .await?;
+    if res.status() != 201 {
+        anyhow::bail!("expected 201 Created")
+    }
+    let location = res.headers().get("Location").unwrap();
+    return Ok((upload, location));
+}
+
+pub async fn continue_upload<'a>(
+    upload: &'a mut ResumableUpload<'a>,
+    location: &str,
+) -> anyhow::Result<()> {
+    let chunk_sz = upload.chunk_size();
+    let nchunks = upload.nchunks();
+    let mut sent_ok = vec![true; nchunks as usize];
+    let mut bad_res = Option::<gloo_net::http::Response>::None;
+    for (chunk, index) in upload.iter_unsent() {
+        let offset = if index < nchunks {
+            index * chunk_sz
+        } else {
+            chunk.size() as i32
+        };
+        let arr = unwrap_js!(JsFuture::from(chunk.array_buffer()).await);
+        let res = gloo_net::http::Request::patch(location)
+            .header("Content-Length", chunk_sz.to_string().as_str())
+            .header("Upload-Offset", offset.to_string().as_str())
+            .header("Content-Type", "application/offset+octet-stream")
+            .header("Tus-Resumable", "1.0.0")
+            .body(arr)?
+            .send()
+            .await?;
+        if res.status() != 204 {
+            bad_res = Some(res);
+            break;
+        }
+        sent_ok[index as usize] = true
+    }
+    for i in 0..nchunks {
+        if sent_ok[i as usize] {}
+    }
+    if let Some(_) = bad_res {
+        anyhow::bail!("bad response")
+    }
+    Ok(())
+}
+
+pub async fn update_media(media: &Media) -> anyhow::Result<()> {
+    let url = format!("{}/api/media/{}", get_origin(), media.id);
+    let res = Request::put(&url).json(media)?.send().await?;
+    if res.status() != 202 {
+        anyhow::bail!("update was not accepted")
+    }
+    Ok(())
+}
+
 struct ChunkIter<'a> {
     file: &'a web_sys::Blob,
     file_sz: i32,
@@ -219,7 +295,7 @@ pub struct ResumableUpload<'a> {
     file: &'a web_sys::File,
 }
 
-pub async fn new_upload<'a>(
+pub async fn new_resumable_upload<'a>(
     file: &'a web_sys::File,
     chunk_sz: i32,
 ) -> Result<ResumableUpload<'a>, JsValue> {
@@ -287,4 +363,62 @@ fn new_ws(ws_path: &str) -> anyhow::Result<WebSocket> {
     };
     let url = format!("{}://{}/api/{}", ws_proto, hostname, ws_path);
     Ok(WebSocket::open(&url)?)
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct SyncResponse {
+    pub missing: HashMap<ID, Metadata>,
+    pub unknown: Vec<ID>,
+    // may include updated if multiple clients are ever supported
+}
+
+pub async fn sync_local(media: MediaCollection) -> anyhow::Result<SyncResponse> {
+    let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+    let mut missing = HashMap::new();
+    if media.len() > 0 {
+        // empty storage
+        // localStorage **updates its keys** when an item
+        // is removed, so count backwards
+        for i in storage.length().unwrap()..0 {
+            let key = storage.key(i).unwrap().unwrap();
+            if key.starts_with("media/") {
+                storage.remove_item(&key).unwrap();
+            }
+        }
+        // populate storage from memory
+        for (id, val) in media.iter() {
+            let key = format!("media/{}", id);
+            let sval = serde_json::to_string(&val).unwrap();
+            storage.set_item(&key, &sval).unwrap();
+        }
+    } else {
+        // popolate memory from storage
+        for i in 0..storage.length().unwrap() {
+            let key = storage.key(i).unwrap().unwrap();
+            if let Some(id) = key.strip_prefix("media/").map(|k| ID::from(k)) {
+                if media.get(&id).is_none() {
+                    let storage_val = storage.get_item(&key).unwrap().unwrap();
+                    let val = serde_json::from_str(&storage_val).unwrap();
+                    missing.insert(id, val);
+                }
+            }
+        }
+    }
+    return Ok(SyncResponse {
+        missing,
+        unknown: vec![],
+    });
+}
+
+pub async fn sync_remote(media: MediaCollection) -> anyhow::Result<SyncResponse> {
+    let url = format!("{}/api/sync/media", origin());
+    let res = gloo_net::http::Request::post(&url)
+        .json(&media)
+        .unwrap()
+        .send()
+        .await?;
+    if res.status() != 201 {
+        anyhow::bail!("sync POST request failed")
+    }
+    Ok(res.json().await?)
 }

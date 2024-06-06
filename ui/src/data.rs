@@ -3,6 +3,15 @@ use std::collections::BTreeMap;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Default, PartialEq, Hash, Clone, Serialize, Deserialize)]
+pub struct Metadata {
+    pub title: String,
+    pub shortname: String,
+    pub format: String,
+    pub url: String,
+    // pub timestamp: i32,
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Media {
     pub id: String,

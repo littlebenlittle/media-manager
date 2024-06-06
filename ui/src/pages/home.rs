@@ -19,9 +19,3 @@ pub fn Home() -> impl IntoView {
     </div>
     }
 }
-
-#[inline(always)]
-fn log_error(e: impl Into<error::Error>) {
-    // TODO: toaster
-    web_sys::console::log_1(&e.into().to_string().into())
-}

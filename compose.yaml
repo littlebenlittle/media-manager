@@ -1,29 +1,29 @@
 services:
-  trunk:
-    build: ./trunk
-    command: [ "trunk", "build", "--release" ]
-    working_dir: /ui
-    environment:
-    - CARGO_TARGET_DIR=/target
-    volumes:
-    - ./ui:/ui:rw
-    - rust-cache:/target:rw
-  transmission:
-    image: lscr.io/linuxserver/transmission:latest
-    volumes:
-    - config:/config:rw
-    - complete:/downloads/complete:rw
-    - incomplete:/downloads/incomplete:rw
+  # trunk:
+  #   build: ./trunk
+  #   command: [ "trunk", "build", "--release" ]
+  #   working_dir: /ui
+  #   environment:
+  #   - CARGO_TARGET_DIR=/target
+  #   volumes:
+  #   - ./ui:/ui:rw
+  #   - rust-cache:/target:rw
+  # transmission:
+  #   image: lscr.io/linuxserver/transmission:latest
+  #   volumes:
+  #   - data:/downloads/complete:rw
+  #   - incomplete:/downloads/incomplete:rw
+  #   - config:/config:rw
   api:
     build:
-      context: ./service
-      dockerfile: Containerfile
+      context: ./api
+      dockerfile: Containerfile.dev
     restart: always
-    working_dir: /service
+    working_dir: /api
     volumes:
-    - ./service:/service:rw
-    - complete:/mkv:ro
-    - webm:/webm:rw
+    - data:/data:rw
+    - metadata:/metadata:rw
+    - ./api:/api:rw
     - gopath:/go:rw
     - gocache:/root/.cache/go:rw
   tusd:
@@ -31,29 +31,28 @@ services:
     command: -behind-proxy -upload-dir=/data -hooks-dir=/hooks
     user: "0"
     volumes:
-    - tusd-data:/data
-    - complete:/complete
+    - data:/complete:rw
+    - tusd-data:/data:rw
     - ./tusd:/hooks:ro
   nginx:
     image: docker.io/library/nginx:latest
     ports:
-    - 8080:80
+    - 8090:80
     volumes:
+    - data:/www/media:ro
     - ./nginx.conf:/etc/nginx/nginx.conf:ro
     - ./ui/dist:/www/data:ro
-    - complete:/www/media/mkv:ro
-    - webm:/www/media/webm:ro
     depends_on:
     - api
     - tusd
-    - transmission
+    # - transmission
 
 volumes:
   gopath:
   gocache:
   config:
-  complete:
   incomplete:
-  webm:
   rust-cache:
   tusd-data:
+  data:
+  metadata:
