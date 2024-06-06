@@ -98,7 +98,6 @@ pub fn App() -> impl IntoView {
 
     let sync_local_action = create_action(move |_: &()| {
         let media = media.get_untracked();
-        log!("sync local");
         async move {
             match client::sync_local(media).await {
                 Err(e) => {

@@ -305,11 +305,12 @@ fn new_ws(ws_path: &str) -> anyhow::Result<WebSocket> {
 pub async fn sync_local(media: MediaCollection) -> anyhow::Result<SyncResponse> {
     let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
     let mut missing = HashMap::new();
+    // TODO this is not efficient, but not worth optimizing yet
     if media.len() > 0 {
         // empty storage
         // localStorage **updates its keys** when an item
         // is removed, so count backwards
-        for i in storage.length().unwrap()..0 {
+        for i in (0..storage.length().unwrap()).rev() {
             let key = storage.key(i).unwrap().unwrap();
             if key.starts_with("media/") {
                 storage.remove_item(&key).unwrap();
@@ -322,7 +323,7 @@ pub async fn sync_local(media: MediaCollection) -> anyhow::Result<SyncResponse> 
             storage.set_item(&key, &sval).unwrap();
         }
     } else {
-        // popolate memory from storage
+        // populate memory from storage
         for i in 0..storage.length().unwrap() {
             let key = storage.key(i).unwrap().unwrap();
             if let Some(id) = key.strip_prefix("media/").map(|k| ID::from(k)) {
