@@ -2,15 +2,17 @@ name: github-pages
 run-name: GitHub Pages
 on:
   pull_request:
-    # TODO switch to main
-    branches: [feature/dry-demo]
+    branches: [main]
     types:
       - closed
+  push:
+    branches: [ci/gh-pages]
 
 jobs:
+
   build-ui:
     name: Build UI
-    if: github.event.pull_request.merged == true
+    # if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,26 +40,26 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('./Cargo.lock') }}
+      - name: Install wasm32-unknown-unknown Target
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: rustup target add wasm32-unknown-unknown
       - name: Install Trunk
         if: steps.cache-dist.outputs.cache-hit != 'true'
         uses: jetli/trunk-action@v0.5.0
       - name: Build UI
         if: steps.cache-dist.outputs.cache-hit != 'true'
-        run: trunk --verbose build --release --features demo
-
-  build-pages:
-    name: Build Pages
-    needs: build-ui
-    runs-on: ubuntu-latest
-    steps:
+        run: |
+           trunk --verbose build --release --features demo
       - name: Upload Pages Artifact
+        if: github.ref_name == 'main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ui/dist/
 
   deploy-pages:
     name: Deploy Pages
-    needs: build
+    if: github.ref_name == 'main'
+    needs: build-ui
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
