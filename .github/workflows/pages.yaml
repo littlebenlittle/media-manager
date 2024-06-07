@@ -18,7 +18,6 @@ jobs:
 
   build-ui:
     name: Build UI
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     defaults:
       run:
