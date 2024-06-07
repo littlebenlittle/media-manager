@@ -10,6 +10,7 @@ on:
     branches: [ci/gh-pages]
 
 jobs:
+
   build-ui:
     name: Build UI
     # if: github.event.pull_request.merged == true
@@ -58,7 +59,7 @@ jobs:
   deploy-pages:
     name: Deploy Pages
     if: github.ref_name == 'main'
-    needs: build-pages
+    needs: build-ui
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
