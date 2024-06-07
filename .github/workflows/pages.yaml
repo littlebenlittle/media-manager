@@ -54,6 +54,8 @@ jobs:
         uses: jetli/trunk-action@v0.5.0
       - name: Build UI
         if: steps.cache-dist.outputs.cache-hit != 'true'
+        env:
+          APP_BASE_PATH: media-manager
         run: trunk --verbose build --release --features demo --public-url https://benlittle.dev/media-manager
       - name: Upload Pages Artifact
         if: github.ref_name == 'main'
