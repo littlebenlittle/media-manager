@@ -1,11 +1,10 @@
 name: github-pages
 run-name: GitHub Pages
 on:
-  # TODO switch to main
-  # pull_request:
-    # branches: [main]
-    # types:
-    #   - closed
+  pull_request:
+    branches: [main]
+    types:
+      - closed
   push:
     branches: [ci/gh-pages]
 
@@ -52,6 +51,7 @@ jobs:
         run: |
            trunk --verbose build --release --features demo
       - name: Upload Pages Artifact
+        if: github.ref_name == 'main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ui/dist/
