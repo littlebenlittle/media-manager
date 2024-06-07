@@ -187,9 +187,6 @@ pub fn App() -> impl IntoView {
                         <li>
                             <a href="/player">"Player"</a>
                         </li>
-                        <li>
-                            <a href="/jobs">"Jobs"</a>
-                        </li>
                     </ul>
                 </nav>
             </div>
@@ -229,7 +226,7 @@ pub fn App() -> impl IntoView {
                         <Route path="" view=MediaDashboardNoId/>
 
                     </Route>
-                    <Route path="/jobs" view=JobsDashboard/>
+                    // <Route path="/jobs" view=JobsDashboard/>
                     <Route path="/*" view=NotFound/>
                 </Routes>
             </main>
