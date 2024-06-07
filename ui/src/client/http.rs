@@ -7,6 +7,7 @@ use js_sys::wasm_bindgen::JsValue;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use wasm_bindgen_futures::JsFuture;
+use std::fmt;
 
 // Origin of the current page.
 #[inline]
@@ -47,8 +48,6 @@ enum MediaFormat {
     Ogg,
     Mp4,
 }
-
-use std::{collections::HashMap, fmt};
 
 impl fmt::Display for MediaFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -300,45 +299,6 @@ fn new_ws(ws_path: &str) -> anyhow::Result<WebSocket> {
     };
     let url = format!("{}://{}/api/{}", ws_proto, hostname, ws_path);
     Ok(WebSocket::open(&url)?)
-}
-
-pub async fn sync_local(media: MediaCollection) -> anyhow::Result<SyncResponse> {
-    let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
-    let mut missing = HashMap::new();
-    // TODO this is not efficient, but not worth optimizing yet
-    if media.len() > 0 {
-        // empty storage
-        // localStorage **updates its keys** when an item
-        // is removed, so count backwards
-        for i in (0..storage.length().unwrap()).rev() {
-            let key = storage.key(i).unwrap().unwrap();
-            if key.starts_with("media/") {
-                storage.remove_item(&key).unwrap();
-            }
-        }
-        // populate storage from memory
-        for (id, val) in media.iter() {
-            let key = format!("media/{}", id);
-            let sval = serde_json::to_string(&val).unwrap();
-            storage.set_item(&key, &sval).unwrap();
-        }
-    } else {
-        // populate memory from storage
-        for i in 0..storage.length().unwrap() {
-            let key = storage.key(i).unwrap().unwrap();
-            if let Some(id) = key.strip_prefix("media/").map(|k| ID::from(k)) {
-                if media.get(&id).is_none() {
-                    let storage_val = storage.get_item(&key).unwrap().unwrap();
-                    let val = serde_json::from_str(&storage_val).unwrap();
-                    missing.insert(id, val);
-                }
-            }
-        }
-    }
-    return Ok(SyncResponse {
-        missing,
-        unknown: vec![],
-    });
 }
 
 pub async fn sync_remote(media: MediaCollection) -> anyhow::Result<SyncResponse> {

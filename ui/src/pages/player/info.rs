@@ -31,41 +31,24 @@ pub fn Info() -> impl IntoView {
     });
     view! {
         <div id="video-info">
-            <ClickToEdit
-                sig=title
-                children=move |tr| {
-                    view! { <h3 on:click=move |_| tr.notify()>{title()}</h3> }
-                }
-            />
+            <ClickToEdit sig=title/>
 
             <table>
                 <tr class="editable">
                     <td>"Shortname"</td>
-                    <ClickToEdit
-                        sig=shortname
-                        children=move |tr| {
-                            view! {
-                                <td on:click=move |_| tr.notify()>
-                                    <span>{shortname()}</span>
-                                </td>
-                            }
-                        }
-                    />
+                    <td>
+                        <ClickToEdit sig=shortname/>
+
+                    </td>
 
                 </tr>
 
                 <tr class="editable">
                     <td>"Format"</td>
-                    <ClickToEdit
-                        sig=format
-                        children=move |tr| {
-                            view! {
-                                <td on:click=move |_| tr.notify()>
-                                    <span>{format()}</span>
-                                </td>
-                            }
-                        }
-                    />
+                    <td>
+                        <ClickToEdit sig=format/>
+
+                    </td>
 
                 </tr>
 
@@ -81,58 +64,51 @@ pub fn Info() -> impl IntoView {
 }
 
 #[component]
-fn ClickToEdit<F, IV>(sig: RwSignal<String>, children: F) -> impl IntoView
-where
-    F: 'static + Fn(Trigger) -> IV,
-    IV: IntoView,
-{
+fn ClickToEdit(sig: RwSignal<String>) -> impl IntoView {
     let (edit, set_edit) = create_signal(false);
     let val = create_rw_signal(sig.get_untracked());
-    let trigger = create_trigger();
     let node = create_node_ref::<html::Input>();
-    create_effect(move |x| {
-        trigger.track();
-        if x.is_some() {
-            // triggered rather than run by default
-            set_edit(true);
-            let n = node.get().unwrap();
-            // n.focus().expect("input.focus");
-            n.select();
+    let _ = on_click_outside(node, move |_| {
+        if edit.get_untracked() {
+            set_edit(false);
+            let val = val.get_untracked();
+            if sig.get() != val {
+                sig.set(val);
+            }
         }
     });
-    let _ = on_click_outside(node, move |_| {
-        set_edit(false);
-        sig.set(val.get());
-    });
     view! {
-        {move || {
-            if edit() {
-                view! {
-                    <input
-                        node_ref=node
-                        type="text"
-                        value=val.get_untracked()
-                        on:input=move |e| {
-                            val.set(event_target_value(&e));
-                        }
-
-                        on:keydown=move |e| {
-                            if e.key() == "Enter" {
-                                // order matter; set_edit will be disposed
-                                // if sig is triggered first
-                                set_edit(false);
-                                sig.set(val.get());
-                            } else if e.key() == "Escape" {
-                                set_edit(false);
-                                val.set(sig.get());
-                            }
-                        }
-                    />
-                }
-                    .into_view()
-            } else {
-                children(trigger).into_view()
+        <input
+            hidden=move || !edit()
+            node_ref=node
+            type="text"
+            value=val.get_untracked()
+            on:input=move |e| {
+                val.set(event_target_value(&e));
             }
-        }}
+
+            on:keydown=move |e| {
+                if e.key() == "Enter" {
+                    set_edit(false);
+                    let val = val.get_untracked();
+                    if sig.get() != val {
+                        sig.set(val);
+                    }
+                } else if e.key() == "Escape" {
+                    set_edit(false);
+                    val.set(sig.get());
+                }
+            }
+        />
+
+        <span
+            hidden=move || edit()
+            on:click=move |_| {
+                set_edit(true);
+                node.get().unwrap().select();
+            }
+        >
+            {move || sig.get()}
+        </span>
     }
 }

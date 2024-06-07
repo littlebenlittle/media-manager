@@ -70,6 +70,7 @@ pub fn App() -> impl IntoView {
     // update the selected media when the selected id changes
     create_effect(move |_| {
         if let Some(id) = selected_id() {
+            log!("selected {}", id);
             set_selected_media(media.get().get(&id).cloned())
         }
     });
@@ -79,6 +80,7 @@ pub fn App() -> impl IntoView {
     create_effect(move |_| {
         if let Some(m) = updated_media() {
             if let Some(id) = selected_id.get_untracked() {
+                log!("updated {}", id);
                 set_media.update(|ms| {
                     ms.insert(id, m);
                 })
@@ -136,7 +138,23 @@ pub fn App() -> impl IntoView {
     create_effect(move |_| {
         sync_local_action.version().get();
         if let Some(Some(res)) = sync_local_action.value().get() {
-            set_media.update(|media| sync(res, media))
+            let m = media.get_untracked();
+            let mut should_update = false;
+            for (id, v) in res.missing.iter() {
+                if m.get(id) != Some(v) {
+                    should_update = true;
+                    break;
+                }
+            }
+            for id in res.unknown.iter() {
+                if m.get(id) != None {
+                    should_update = true;
+                    break;
+                }
+            }
+            if should_update {
+                set_media.update(|media| sync(res, media))
+            }
         }
     });
 

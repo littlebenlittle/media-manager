@@ -1,5 +1,5 @@
 use crate::Context;
-use crate::{log, data::ID};
+use crate::{data::ID, log};
 use leptos::*;
 use leptos_router::*;
 
@@ -11,7 +11,7 @@ pub fn MediaSelector() -> impl IntoView {
     let is_eq = move |i: &ID| id().map(|id| id == *i).unwrap_or(false);
     let sorted_media = move || {
         let mut list: Vec<_> = ctx.media.get().into_iter().collect();
-        list.sort_by(|(_, a), (_, b)| a.shortname.cmp(&b.shortname));
+        list.sort_by(|(_, a), (_, b)| a.shortname.to_lowercase().cmp(&b.shortname.to_lowercase()));
         list
     };
     view! {

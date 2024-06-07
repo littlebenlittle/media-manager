@@ -31,17 +31,10 @@ fn unknown(n: usize) -> Vec<ID> {
     return unknown;
 }
 
-pub async fn sync_local(_media: MediaCollection) -> anyhow::Result<SyncResponse> {
+pub async fn sync_remote(_media: MediaCollection) -> anyhow::Result<SyncResponse> {
     Ok(crate::data::SyncResponse {
         missing: missing(12),
         unknown: vec![],
-    })
-}
-
-pub async fn sync_remote(_media: MediaCollection) -> anyhow::Result<SyncResponse> {
-    Ok(crate::data::SyncResponse {
-        missing: missing(3),
-        unknown: unknown(2),
     })
 }
 
