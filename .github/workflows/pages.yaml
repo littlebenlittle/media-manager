@@ -1,12 +1,9 @@
 name: github-pages
 run-name: GitHub Pages
 on:
-  pull_request:
-    branches: [main]
-    types:
-      - closed
   push:
     branches: [ci/gh-pages]
+  workflow_dispatch:
     
 permissions:
   contents: read
