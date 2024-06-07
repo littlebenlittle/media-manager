@@ -3,9 +3,11 @@ run-name: GitHub Pages
 on:
   pull_request:
     # TODO switch to main
+    # branches: [main]
+    # types:
+    #   - closed
+  push:
     branches: [ci/gh-pages]
-    types:
-      - closed
 
 jobs:
   build-ui:
