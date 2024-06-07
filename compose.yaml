@@ -1,23 +1,23 @@
 services:
-  # trunk:
-  #   build: ./trunk
-  #   command: [ "trunk", "build", "--release" ]
-  #   working_dir: /ui
-  #   environment:
-  #   - CARGO_TARGET_DIR=/target
-  #   volumes:
-  #   - ./ui:/ui:rw
-  #   - rust-cache:/target:rw
-  # transmission:
-  #   image: lscr.io/linuxserver/transmission:latest
-  #   volumes:
-  #   - data:/downloads/complete:rw
-  #   - incomplete:/downloads/incomplete:rw
-  #   - config:/config:rw
+  trunk:
+    build: ./trunk
+    command: [ "trunk", "build", "--release" ]
+    working_dir: /ui
+    environment:
+    - CARGO_TARGET_DIR=/target
+    volumes:
+    - ./ui:/ui:rw
+    - rust-cache:/target:rw
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    volumes:
+    - data:/downloads/complete:rw
+    - incomplete:/downloads/incomplete:rw
+    - config:/config:rw
   api:
     build:
       context: ./api
-      dockerfile: Containerfile.dev
+      dockerfile: Containerfile
     restart: always
     working_dir: /api
     volumes:
@@ -37,7 +37,7 @@ services:
   nginx:
     image: docker.io/library/nginx:latest
     ports:
-    - 8090:80
+    - 8080:80
     volumes:
     - data:/www/media:ro
     - ./nginx.conf:/etc/nginx/nginx.conf:ro
@@ -45,7 +45,7 @@ services:
     depends_on:
     - api
     - tusd
-    # - transmission
+    - transmission
 
 volumes:
   gopath:
