@@ -32,7 +32,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./**') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./**', '../.github/workflows/pages.yaml') }}
+          restore-keys: ${{ runner.os }}-cargo-
       - name: Cache Dependencies
         if: steps.cache-dist.outputs.cache-hit != 'true'
         id: cache-target
@@ -53,8 +54,7 @@ jobs:
         uses: jetli/trunk-action@v0.5.0
       - name: Build UI
         if: steps.cache-dist.outputs.cache-hit != 'true'
-        run: |
-           trunk --verbose build --release --features demo
+        run: trunk --verbose build --release --features demo --public-url https://benlittle.dev/media-manager
       - name: Upload Pages Artifact
         if: github.ref_name == 'main'
         uses: actions/upload-pages-artifact@v3
