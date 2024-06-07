@@ -7,12 +7,21 @@ on:
       - closed
   push:
     branches: [ci/gh-pages]
+    
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
 
   build-ui:
     name: Build UI
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     defaults:
       run:
