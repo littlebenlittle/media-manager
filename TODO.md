@@ -38,9 +38,9 @@
 
 ## PR
 
-- [ ] Dry demo 
+- [x] Dry demo 
 - [ ] User docs
-- [ ] GitHub pages automation
+- [x] GitHub pages automation
 
 ## Under Consideration
 
