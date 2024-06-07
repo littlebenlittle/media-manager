@@ -1,8 +1,8 @@
 name: github-pages
 run-name: GitHub Pages
 on:
-  pull_request:
-    # TODO switch to main
+  # TODO switch to main
+  # pull_request:
     # branches: [main]
     # types:
     #   - closed
