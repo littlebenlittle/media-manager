@@ -1,3 +1,4 @@
 {
-    "rust-analyzer.rustfmt.overrideCommand": ["leptosfmt", "--stdin", "--rustfmt"]
+    "rust-analyzer.rustfmt.overrideCommand": ["leptosfmt", "--stdin", "--rustfmt"],
+    // "rust-analyzer.cargo.features": ["demo"]
 }

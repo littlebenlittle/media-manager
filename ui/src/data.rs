@@ -1,7 +1,16 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, PartialEq, Hash, Clone, Serialize, Deserialize)]
+pub struct Metadata {
+    pub title: String,
+    pub shortname: String,
+    pub format: String,
+    pub url: String,
+    // pub timestamp: i32,
+}
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Media {
@@ -13,10 +22,10 @@ pub struct Media {
 }
 
 impl Media {
-    #[inline]
-    pub fn url(&self) -> String {
-        crate::client::get_origin() + "/media/" + &self.path
-    }
+    // #[inline]
+    // pub fn url(&self) -> String {
+    //     crate::client::get_origin() + "/media/" + &self.path
+    // }
 
     pub fn update(&mut self, path: &str, val: &str) {
         match path.as_ref() {
@@ -60,3 +69,77 @@ impl MediaLibrary {
     //     }
     // }
 }
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct SyncResponse {
+    pub missing: HashMap<ID, Metadata>,
+    pub unknown: Vec<ID>,
+    // may include updated if multiple clients are ever supported
+}
+
+/// IDs are base64 encoded sha256 hashes.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Serialize, Deserialize)]
+pub struct ID(String);
+
+impl ID {
+    pub fn gen(v: &str) -> Self {
+        use base64::prelude::*;
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(v);
+        let result = hasher.finalize();
+        let id = BASE64_STANDARD.encode(result);
+        return Self(id);
+    }
+
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for ID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for ID {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<ID> for String {
+    fn from(value: ID) -> String {
+        value.0
+    }
+}
+
+impl<'a> From<&'a ID> for &'a str {
+    fn from(value: &'a ID) -> &'a str {
+        &value.0
+    }
+}
+
+impl From<&str> for ID {
+    fn from(value: &str) -> Self {
+        ID(value.to_owned())
+    }
+}
+
+impl leptos::IntoView for &ID {
+    fn into_view(self) -> leptos::View {
+        (&self.0).into_view()
+    }
+}
+
+impl leptos::IntoView for ID {
+    fn into_view(self) -> leptos::View {
+        (&self.0).into_view()
+    }
+}
+
+/// Just a `HashMap`, but may eventually need more
+/// sophistication.
+pub type MediaCollection = HashMap<ID, Metadata>;
+

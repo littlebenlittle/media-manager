@@ -1,0 +1,70 @@
+name: github-pages
+run-name: GitHub Pages
+on:
+  pull_request:
+    branches: [main]
+    types:
+      - closed
+  push:
+    branches: [ci/gh-pages]
+
+jobs:
+
+  build-ui:
+    name: Build UI
+    # if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache Dist
+        id: cache-dist
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./**') }}
+      - name: Cache Dependencies
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        id: cache-target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./Cargo.lock') }}
+      - name: Install wasm32-unknown-unknown Target
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install Trunk
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        uses: jetli/trunk-action@v0.5.0
+      - name: Build UI
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: |
+           trunk --verbose build --release --features demo
+      - name: Upload Pages Artifact
+        if: github.ref_name == 'main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ui/dist/
+
+  deploy-pages:
+    name: Deploy Pages
+    if: github.ref_name == 'main'
+    needs: build-ui
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

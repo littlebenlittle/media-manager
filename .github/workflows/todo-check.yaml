@@ -1,0 +1,20 @@
+name: todo-check
+run-name: TODO Check
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  # Fails the action if TODOs are present in
+  # critical files
+  find-todos:
+    name: Find TODOs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - run: |
+          grep -r 'TODO' .github && exit 0
+          exit 1

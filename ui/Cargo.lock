@@ -2154,6 +2154,7 @@ name = "ui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "console_error_panic_hook",
  "console_log",
  "futures",
@@ -2169,6 +2170,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
