@@ -1,5 +1,5 @@
 use crate::Context;
-use crate::{log, data::ID, client};
+use crate::{client, data::ID, log};
 use leptos::*;
 use leptos_router::*;
 
@@ -43,7 +43,11 @@ pub fn Dashboard() -> impl IntoView {
                     view! {
                         <div id="video-view-area">
                             <Video url=url.clone()/>
-                            <Info/>
+                            {move || {
+                                ctx.selected_media.get();
+                                view! { <Info/> }
+                            }}
+
                         </div>
                         <Controls url/>
                     }
