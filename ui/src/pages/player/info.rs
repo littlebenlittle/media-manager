@@ -40,9 +40,7 @@ pub fn Info() -> impl IntoView {
                     </p>
                 }
             }
-            <h3>
-                <ClickToEdit sig=title/>
-            </h3>
+            <h3> <ClickToEdit sig=title/> </h3>
             <table>
                 <tr class="editable">
                     <td>"Shortname"</td>

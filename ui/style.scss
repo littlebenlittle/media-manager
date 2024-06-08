@@ -451,3 +451,14 @@ nav ul {
 .hidden {
   display: none !important;
 }
+
+#not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  text-align: left;
+  
+  >* {
+    margin-bottom: 1rem;
+  }
+}
