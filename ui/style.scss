@@ -293,6 +293,7 @@ nav ul {
     
     span {
       width: 100%;
+      display: block;
     }
   }
 
@@ -445,4 +446,8 @@ nav ul {
     height: 256px;
     overflow-y: auto;
   }
+}
+
+.hidden {
+  display: none !important;
 }

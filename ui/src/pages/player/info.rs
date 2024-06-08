@@ -31,8 +31,18 @@ pub fn Info() -> impl IntoView {
     });
     view! {
         <div id="video-info">
-            <ClickToEdit sig=title/>
-
+            {
+                #[cfg(feature = "demo")]
+                view! {
+                    <p>
+                        "You can edit some metadata items (title, shortname, format) \
+                        by clicking on them."
+                    </p>
+                }
+            }
+            <h3>
+                <ClickToEdit sig=title/>
+            </h3>
             <table>
                 <tr class="editable">
                     <td>"Shortname"</td>
@@ -79,7 +89,7 @@ fn ClickToEdit(sig: RwSignal<String>) -> impl IntoView {
     });
     view! {
         <input
-            hidden=move || !edit()
+            class:hidden=move || !edit()
             node_ref=node
             type="text"
             value=val.get_untracked()
@@ -102,12 +112,13 @@ fn ClickToEdit(sig: RwSignal<String>) -> impl IntoView {
         />
 
         <span
-            hidden=move || edit()
+            class:hidden=move || edit()
             on:click=move |_| {
                 set_edit(true);
                 node.get().unwrap().select();
             }
         >
+
             {move || sig.get()}
         </span>
     }
