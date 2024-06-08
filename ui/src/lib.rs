@@ -19,7 +19,7 @@ use crate::components::SyncButton;
 
 // Top-Level pages
 use crate::pages::home::Home;
-use crate::pages::jobs::JobsDashboard;
+// use crate::pages::jobs::JobsDashboard;
 use crate::pages::not_found::NotFound;
 use crate::pages::player::{Dashboard as MediaDashboard, DashboardNoId as MediaDashboardNoId};
 
@@ -46,6 +46,19 @@ macro_rules! unwrap_js {
             Err(e) => anyhow::bail!(e.as_string().unwrap()),
         }
     };
+}
+
+pub fn base_path(route: &str) -> String {
+    match std::option_env!("APP_BASE_PATH") {
+        Some(base) => {
+            if route == "" {
+                format!("/{}", base)
+            } else {
+                format!("/{}{}", base, route)
+            }
+        }
+        None => route.to_owned(),
+    }
 }
 
 #[derive(Clone)]
@@ -195,15 +208,15 @@ pub fn App() -> impl IntoView {
         <Title text="Media Manager"/>
         <Meta charset="UTF-8"/>
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <Router base=std::option_env!("APP_BASE_PATH").unwrap_or("")>
+        <Router>
             <div id="nav-container">
                 <nav>
                     <ul>
                         <li>
-                            <a href="/">"Home"</a>
+                            <a href=base_path("")>"Home"</a>
                         </li>
                         <li>
-                            <a href="/player">"Player"</a>
+                            <a href=base_path("/player")>"Player"</a>
                         </li>
                     </ul>
                 </nav>
@@ -232,9 +245,9 @@ pub fn App() -> impl IntoView {
                     </div>
                 </div>
                 <Routes>
-                    <Route path="/" view=Home/>
+                    <Route path=base_path("") view=Home/>
                     <Route
-                        path="/player"
+                        path=base_path("/player")
                         view=move || {
                             view! { <Outlet/> }
                         }

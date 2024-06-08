@@ -1,5 +1,5 @@
 use crate::Context;
-use crate::{data::ID, log};
+use crate::{data::ID, log, base_path};
 use leptos::*;
 use leptos_router::*;
 
@@ -16,6 +16,20 @@ pub fn MediaSelector() -> impl IntoView {
     };
     view! {
         <div id="media-selector">
+            {move || {
+                let media = ctx.media.get();
+                if media.len() == 0 {
+                    view! {
+                        <p>
+                            "Looks like there isn't any media to show. Try clicking \
+                                        the Remote sync button in the upper right."
+                        </p>
+                    }
+                        .into_view()
+                } else {
+                    view! {}.into_view()
+                }
+            }}
             <ul>
                 <For
                     each=sorted_media
@@ -28,7 +42,7 @@ pub fn MediaSelector() -> impl IntoView {
 
                     children=move |(i, m)| {
                         view! {
-                            <a href=format!("/player/{}", i)>
+                            <a href=base_path(&format!("/player/{}", i))>
                                 <li class:selected=is_eq(&i)>
                                     <p>{m.shortname}</p>
                                     <br/>
@@ -38,7 +52,6 @@ pub fn MediaSelector() -> impl IntoView {
                         }
                     }
                 />
-
             </ul>
         </div>
     }
