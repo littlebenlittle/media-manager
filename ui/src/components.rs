@@ -2,7 +2,7 @@ use core::time;
 use std::thread;
 
 use leptos::*;
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
+use leptos_use::{on_click_outside, use_timeout_fn, UseTimeoutFnReturn};
 
 #[component]
 pub fn Loading(#[prop(optional)] what: Option<String>) -> impl IntoView {
@@ -44,5 +44,68 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
         >
             {move || if pending.get() { "Syncing..." } else { "Sync" }}
         </button>
+    }
+}
+
+#[component]
+pub fn ClickToEdit<F, Cb>(value: F, onchange: Cb) -> impl IntoView
+where
+    F: Fn() -> String + Clone + 'static,
+    Cb: Fn(String) + Clone + 'static,
+{
+    let (edit, set_edit) = create_signal(false);
+    let val = create_rw_signal(value());
+    let node = create_node_ref::<html::Input>();
+    {
+        let value = value();
+        let onchange = onchange.clone();
+        let _ = on_click_outside(node, move |_| {
+            if edit.get_untracked() {
+                set_edit(false);
+                let val = val.get_untracked();
+                if value != val {
+                    onchange(val)
+                }
+            }
+        });
+    }
+    view! {
+        <input
+            class:hidden=move || !edit()
+            node_ref=node
+            type="text"
+            value=val.get_untracked()
+            on:input=move |e| {
+                val.set(event_target_value(&e));
+            }
+
+            on:keydown={
+                let value = value.clone();
+                move |e| {
+                    let value = value();
+                    if e.key() == "Enter" {
+                        set_edit(false);
+                        let val = val.get_untracked();
+                        if value != val {
+                            onchange(val)
+                        }
+                    } else if e.key() == "Escape" {
+                        set_edit(false);
+                        val.set(value);
+                    }
+                }
+            }
+        />
+
+        <span
+            class:hidden=move || edit()
+            on:click=move |_| {
+                set_edit(true);
+                node.get().unwrap().select();
+            }
+        >
+
+            {value}
+        </span>
     }
 }

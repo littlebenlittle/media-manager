@@ -22,6 +22,7 @@ use crate::pages::home::Home;
 // use crate::pages::jobs::JobsDashboard;
 use crate::pages::not_found::NotFound;
 use crate::pages::player::{Dashboard as MediaDashboard, DashboardNoId as MediaDashboardNoId};
+use crate::pages::todo_list::TodoList;
 
 #[macro_export]
 macro_rules! log {
@@ -218,6 +219,9 @@ pub fn App() -> impl IntoView {
                         <li>
                             <a href=base_path("/player")>"Player"</a>
                         </li>
+                        <li>
+                            <a href=base_path("/todo")>"TODO List"</a>
+                        </li>
                     </ul>
                 </nav>
             </div>
@@ -257,6 +261,7 @@ pub fn App() -> impl IntoView {
                         <Route path="" view=MediaDashboardNoId/>
 
                     </Route>
+                    <Route path="/todo" view=TodoList/>
                     // <Route path="/jobs" view=JobsDashboard/>
                     <Route path="/*" view=NotFound/>
                 </Routes>

@@ -1,6 +1,6 @@
 //! Generate fake data for faster debugging cycles.
 
-use crate::data::{MediaCollection, Metadata, SyncResponse, ID};
+use crate::data::{Collection, MediaCollection, Metadata, SyncResponse, ID};
 use std::collections::HashMap;
 
 /// Fake items that are "missing" from the in-memory metadata
@@ -54,4 +54,38 @@ pub fn origin() -> String {
 
 pub async fn convert(req: serde_json::Value) -> anyhow::Result<()> {
     anyhow::bail!("convert not available for mock client");
+}
+
+pub async fn todo_list() -> Result<Collection<String>, String> {
+    // TODO in a non-mock, should check if remote is available
+    // and only pull from cache if not. If remote is indeed
+    // available, it should write content to storage after it
+    // has passed data back to caller, e.g. spawn a new thread.
+    let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+    let mut items = Collection::new();
+    for i in 0..storage.length().unwrap() {
+        // TODO need a mutex around storage or this may panic
+        let key = storage.key(i).unwrap().unwrap();
+        if let Some(id) = key.strip_prefix("todo/") {
+            let val = storage.get_item(&key).unwrap().unwrap();
+            items.insert(id.into(), serde_json::from_str(&val).unwrap());
+        }
+    }
+    return Ok(items);
+}
+
+pub async fn add_todo_item(text: String) -> Result<ID, String> {
+    let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+    let id = uuid::Uuid::new_v4().to_string().into();
+    let key = format!("todo/{}", id);
+    storage.set_item(&key, &text).unwrap();
+    // TODO in non-mock, spawn a task to write back to remote
+    return Ok(id);
+}
+
+pub async fn edit_todo_item(id: ID, text: String) -> Result<(), String> {
+    let storage = web_sys::window().unwrap().local_storage().unwrap().unwrap();
+    let key = format!("todo/{}", id);
+    storage.set_item(&key, &text).unwrap();
+    Ok(())
 }

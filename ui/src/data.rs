@@ -142,4 +142,5 @@ impl leptos::IntoView for ID {
 /// Just a `HashMap`, but may eventually need more
 /// sophistication.
 pub type MediaCollection = HashMap<ID, Metadata>;
+pub type Collection<T: Serialize + for <'de> Deserialize<'de>> = HashMap<ID, T>;
 
