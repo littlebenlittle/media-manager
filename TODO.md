@@ -1,14 +1,21 @@
 # TODOs
 
+## Small Bugs
+
+- [ ] Overflow on shortnames in selector
+
 ## Architecture
 
 ### UI
 
 - [ ] Better reactive design
     - [x] Select should preserve scroll
+    - [ ] Diagram reactive elements
 - [ ] Query and view instead of total sync
     - [ ] Filter media in selector by query
-    
+- [ ] Hover selector for metadata
+- [ ] TODO list dashboard
+
 ### API
 
 - [ ] Persist storage on server
@@ -20,10 +27,13 @@
 - [ ] Improve metadata automation
     - [ ] `ffprobe` to mine metadata
     - [ ] Use collections for nested directories
-    
+
 ## Maintenance
 
 - [ ] Split resumable uploads into a separate crate
+- [ ] figure out `trunk` is storing things and cache them in builds
+- [ ] clean up old code
+    - [ ] move code sections into named functions
 
 ## Greenfield
 
