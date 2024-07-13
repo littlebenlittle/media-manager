@@ -1,7 +1,11 @@
 use leptos::*;
 use leptos_router::*;
 
-use crate::{components::ClickToEdit, data::Media, log};
+use crate::{
+    components::ClickToEdit,
+    data::{Media, MediaItem},
+    log,
+};
 
 #[component]
 pub fn MediaSelector() -> impl IntoView {
@@ -54,17 +58,15 @@ pub fn MediaEditor() -> impl IntoView {
     let id = move || params.with(|p| p.get("id").unwrap().clone());
     let media = use_context::<Resource<(), Media>>().unwrap();
     let m = move || media.get().map(|media| media.get(&id()).cloned()).flatten();
-    let update_media = create_action(move |(field, value): &(&str, String)| {
-        let (field, value) = (field.to_string(), value.clone());
+    let update_media = create_action(move |(field, value): &(String, String)| {
+        let (field, value) = (field.clone(), value.clone());
         let id = id();
         async move {
-            crate::client::update_media(id, &field, value).await;
+            crate::client::update_media(id, &field, &value).await;
             media.refetch();
         }
     });
     let url = create_memo(move |_| m().map(|m| m.url));
-    // let url = move || m().map(|m| m.url);
-    create_effect(move |_| log!("{:?}", url()));
     view! {
         <Transition fallback=|| {
             view! { <p>"Loading Media"</p> }
@@ -85,22 +87,80 @@ pub fn MediaEditor() -> impl IntoView {
                     .map(|m| {
                         view! {
                             <div id="detail">
-                                <table>
-                                    <tr>
-                                        <td>"Title"</td>
-                                        <td>
-                                            <ClickToEdit
-                                                value=m.title
-                                                onset=move |value| update_media.dispatch(("title", value))
-                                            />
-                                        </td>
-                                    </tr>
-                                </table>
+                                <DetailTable
+                                    media=m
+                                    update_media=move |field, value| {
+                                        update_media.dispatch((field, value))
+                                    }
+                                />
+
                             </div>
                         }
                     })
             }}
 
         </Transition>
+    }
+}
+
+#[allow(unexpected_cfgs)]
+#[component]
+fn DetailTable<Cb>(media: MediaItem, update_media: Cb) -> impl IntoView
+where
+    Cb: 'static + Copy + Fn(String, String),
+{
+    #[cfg(web_sys_unstable_apis)]
+    let leptos_use::UseClipboardReturn {
+        is_supported,
+        copy,
+        copied,
+        ..
+    } = leptos_use::use_clipboard();
+    view! {
+        <table>
+            <tr>
+                <td>"Title"</td>
+                <td>
+                    <ClickToEdit
+                        value=media.title
+                        onset=move |value| update_media("title".to_string(), value)
+                    />
+                </td>
+            </tr>
+            <tr>
+                <td>"Format"</td>
+                <td>
+                    <ClickToEdit
+                        value=media.format
+                        onset=move |value| update_media("format".to_string(), value)
+                    />
+                </td>
+            </tr>
+            <tr>
+                <td>"URL"</td>
+                <td class="media-url">
+                    {#[cfg(web_sys_unstable_apis)]
+                    {
+                        let url = media.url.clone();
+                        view! {
+                            <Show when=is_supported fallback=|| view! { <span></span> }>
+                                <button on:click={
+                                    let copy = copy.clone();
+                                    let url = url.clone();
+                                    move |_| {
+                                        copy(&url);
+                                    }
+                                }>
+                                    <Show when=copied fallback=|| "Copy">
+                                        "Copied!"
+                                    </Show>
+                                </button>
+                            </Show>
+                        }
+                    }}
+                    <span class="url-text">{media.url.clone()}</span>
+                </td>
+            </tr>
+        </table>
     }
 }

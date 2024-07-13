@@ -227,6 +227,20 @@ nav ul {
   }
 }
 
+.media-url {
+  display: flex;
+  gap: 1rem;
+  
+  button {
+    width: 6rem;
+  }
+  
+  .url-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 #view {
 
   flex-shrink: 0;

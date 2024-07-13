@@ -1,8 +1,4 @@
-use core::time;
-use std::thread;
-
 use leptos::*;
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 #[component]
 pub fn Loading(#[prop(optional)] what: Option<String>) -> impl IntoView {
