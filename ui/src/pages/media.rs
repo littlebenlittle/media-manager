@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 
 use crate::{
-    components::ClickToEdit,
+    components::{ClickToEdit, CopyButton},
     data::{Media, MediaItem},
     log,
 };
@@ -117,13 +117,6 @@ fn DetailTable<Cb>(media: MediaItem, update_media: Cb) -> impl IntoView
 where
     Cb: 'static + Copy + Fn(String, String),
 {
-    #[cfg(web_sys_unstable_apis)]
-    let leptos_use::UseClipboardReturn {
-        is_supported,
-        copy,
-        copied,
-        ..
-    } = leptos_use::use_clipboard();
     view! {
         <table>
             <tr>
@@ -148,29 +141,11 @@ where
                 <td>"URL"</td>
                 <td>
                     <span class="media-url">
-                        {#[cfg(web_sys_unstable_apis)]
-                        {
-                            let url = media.url.clone();
-                            view! {
-                                <Show when=is_supported fallback=|| view! { <span></span> }>
-                                    <button
-                                        class="copy-button"
-                                        on:click={
-                                            let copy = copy.clone();
-                                            let url = url.clone();
-                                            move |_| {
-                                                copy(&url);
-                                            }
-                                        }
-                                    >
 
-                                        <Show when=copied fallback=|| "Copy">
-                                            "Copied!"
-                                        </Show>
-                                    </button>
-                                </Show>
-                            }
-                        }}
+                        {
+                            #[cfg(web_sys_unstable_apis)]
+                            view! { <CopyButton value=media.url.clone()/> }
+                        }
                         <span class="url-text">{media.url.clone()}</span>
                     </span>
                 </td>

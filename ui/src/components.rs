@@ -46,7 +46,7 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
 #[component]
 pub fn ClickToEdit<Cb>(value: String, onset: Cb) -> impl IntoView
 where
-    Cb: 'static + Copy + Fn(String)
+    Cb: 'static + Copy + Fn(String),
 {
     let (edit, set_edit) = create_signal(false);
     let val = create_rw_signal(value.clone());
@@ -91,5 +91,35 @@ where
 
             {move || last_val.get()}
         </span>
+    }
+}
+
+#[cfg(web_sys_unstable_apis)]
+#[component]
+pub fn CopyButton(value: String) -> impl IntoView {
+    let leptos_use::UseClipboardReturn {
+        is_supported,
+        copy,
+        copied,
+        ..
+    } = leptos_use::use_clipboard();
+    view! {
+        <Show when=is_supported fallback=|| view! { <span></span> }>
+            <button
+                class="copy-button"
+                on:click={
+                    let copy = copy.clone();
+                    let value = value.clone();
+                    move |_| {
+                        copy(&value);
+                    }
+                }
+            >
+
+                <Show when=copied fallback=|| "Copy">
+                    "Copied!"
+                </Show>
+            </button>
+        </Show>
     }
 }
