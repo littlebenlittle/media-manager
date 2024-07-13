@@ -1,4 +1,6 @@
 pub mod home;
-pub mod player;
-pub mod jobs;
+pub mod media;
 pub mod not_found;
+
+pub use home::Home;
+pub use not_found::NotFound;
