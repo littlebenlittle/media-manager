@@ -12,8 +12,7 @@ pub fn MediaSelector() -> impl IntoView {
         <div id="media-selector">
             <h3>"Media Selector"</h3>
             <Form method="GET" action="">
-                <input type="search" name="q" value=search/>
-                <input type="submit"/>
+                <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
             </Form>
             <Transition fallback=|| view! { <p>"Loading..."</p> }>
                 <ul>
@@ -33,7 +32,15 @@ pub fn MediaSelector() -> impl IntoView {
                                 <For
                                     each=filtered_media
                                     key=|(id, _)| id.clone()
-                                    children=|(_, m)| view! { <li>{m.summary()}</li> }
+                                    children=move |(id, m)| {
+                                        view! {
+                                            <a href=move || crate::path(
+                                                &format!("media/{}{}", id, query().to_query_string()),
+                                            )>
+                                                <li>{m.summary()}</li>
+                                            </a>
+                                        }
+                                    }
                                 />
                             }
                         })}
@@ -48,13 +55,14 @@ pub fn MediaSelector() -> impl IntoView {
 pub fn MediaEditor() -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let media = use_context::<RwSignal<Media>>().unwrap();
+    let media = use_context::<Resource<(), Media>>().unwrap();
     let m = move || {
-        media
-            .get()
-            .get(&id())
-            .map(|m| m.clone().into_view())
-            .unwrap_or(view! { <p>"Media Not Found"</p> }.into_view())
+        media.get().map(|media| {
+            media
+                .get(&id())
+                .map(|m| m.clone().into_view())
+                .unwrap_or(view! { <p>"Media Not Found"</p> }.into_view())
+        })
     };
     view! {
         <div id="media-editor">

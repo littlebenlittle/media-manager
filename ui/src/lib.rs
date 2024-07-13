@@ -48,6 +48,7 @@ pub(crate) fn path(p: &str) -> String {
 pub fn App() -> impl IntoView {
     let media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
     provide_context(media);
+    provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
         <Title text="Media Manager"/>
