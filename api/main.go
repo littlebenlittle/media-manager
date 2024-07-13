@@ -194,10 +194,6 @@ func find_media(m *Manager) func(c *gin.Context) {
 		media, ok := m.Media.Get(id.(ID))
 		if !ok {
 			log.Printf("media not found: %s", id)
-			items, _ := m.Media.List()
-			for iid := range items {
-				log.Printf("%s", iid)
-			}
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
