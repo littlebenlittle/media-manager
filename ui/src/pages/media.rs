@@ -38,12 +38,16 @@ pub fn MediaSelector() -> impl IntoView {
                                 key=|(mid, _)| mid.clone()
                                 children=move |(mid, m)| {
                                     view! {
-                                        <a href={
-                                            let mid = mid.clone();
-                                            move || crate::path(
-                                                &format!("media/{}{}", mid, query().to_query_string()),
-                                            )
-                                        }>
+                                        <a
+                                            title=m.title.clone()
+                                            href={
+                                                let mid = mid.clone();
+                                                move || crate::path(
+                                                    &format!("media/{}{}", mid, query().to_query_string()),
+                                                )
+                                            }
+                                        >
+
                                             // TODO why is this class not reacing to changes in id?
                                             <li class:selected=move || {
                                                 Some(mid.clone()) == id()
@@ -142,11 +146,22 @@ where
                 <td>
                     <span class="media-url">
 
+                        <a download href=media.url.clone()>
+                            <button>"Download"</button>
+                        </a>
+
                         {
                             #[cfg(web_sys_unstable_apis)]
-                            view! { <CopyButton value=media.url.clone()/> }
+                            view! {
+                                <span>
+                                    <CopyButton value=media.url.clone()/>
+                                </span>
+                            }
                         }
-                        <span class="url-text">{media.url.clone()}</span>
+
+                        <span class="url-text" title=media.url.clone()>
+                            {media.url.clone()}
+                        </span>
                     </span>
                 </td>
             </tr>

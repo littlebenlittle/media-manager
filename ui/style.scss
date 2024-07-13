@@ -25,6 +25,7 @@ body {
 input {
   background-color: #121212;
   color: #eee;
+  border: none;
 }
 
 a {
@@ -153,7 +154,6 @@ nav ul {
   // padding: 1rem;
 
   input {
-    border: none;
     height: 2rem;
     font-size: 1rem;
     text-align: center;
@@ -228,8 +228,8 @@ nav ul {
   }
 }
 
-button.copy-button {
-  width: 4rem;
+button {
+  width: 6rem;
   background-color: #333;
   color: #999;
   font-weight: bold;
@@ -237,7 +237,7 @@ button.copy-button {
   border-radius: 3px;
 }
 
-button.copy-button:hover {
+button:hover {
   background-color: #555;
 }
 
