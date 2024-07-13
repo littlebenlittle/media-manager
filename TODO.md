@@ -4,10 +4,10 @@
 
 ### UI
 
-- [ ] Better reactive design
+- [x] Better reactive design
     - [x] Select should preserve scroll
-- [ ] Query and view instead of total sync
-    - [ ] Filter media in selector by query
+- [x] Filter media in selector by query
+- [x] Media detial on hover
     
 ### API
 
@@ -23,7 +23,8 @@
     
 ## Maintenance
 
-- [ ] Split resumable uploads into a separate crate
+- [x] Split resumable uploads into a separate crate
+- [ ] API should return schema-appropriate media URLs
 
 ## Greenfield
 

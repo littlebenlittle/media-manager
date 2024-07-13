@@ -1,57 +1,49 @@
 //! Generate fake data for faster debugging cycles.
 
-use crate::data::{MediaCollection, Metadata, SyncResponse, ID};
-use std::collections::HashMap;
+use crate::{log, data::{Media, MediaItem}};
+use std::sync::Mutex;
 
-/// Fake items that are "missing" from the in-memory metadata
-/// store.
-fn missing(n: usize) -> HashMap<ID, Metadata> {
-    let mut missing = HashMap::new();
-    for i in 0..n {
-        missing.insert(
-            ID::from(i.to_string()),
-            Metadata {
-                title: "NASA Video".to_owned(),
-                format: "webm".to_owned(),
-                shortname: format!("NASA {:02}", i),
-                url: "https://file-examples.com/storage/fe4e1227086659fa1a24064/2020/03/file_example_WEBM_480_900KB.webm".to_owned(),
-            },
-        );
+lazy_static::lazy_static! {
+    static ref MEDIA: Mutex<Option<Media>> = Mutex::new(None);
+}
+
+fn init_media() -> Option<Media> {
+    let mut m = Media::new();
+    for i in 0..5 {
+        m.insert(
+                i.to_string(),
+                MediaItem {
+                    title: format!("Big Buck Bunny {}", i),
+                    format: "webm".to_string(),
+                    // shortname: format!("NASA {:02}", i),
+                    url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
+                },
+            );
     }
-    return missing;
+    return Some(m)
 }
 
-/// Fake IDs that were supposedly present but don't correspond to
-/// media on the server.
-fn unknown(n: usize) -> Vec<ID> {
-    let mut unknown = Vec::new();
-    for i in 0..n {
-        unknown.push(ID::from(i.to_string()));
+pub async fn get_media() -> Media {
+    let mut media = MEDIA.lock().unwrap();
+    if media.is_none() {
+        *media = init_media()
     }
-    return unknown;
+    return media.clone().unwrap();
 }
 
-pub async fn sync_remote(_media: MediaCollection) -> anyhow::Result<SyncResponse> {
-    Ok(crate::data::SyncResponse {
-        missing: missing(12),
-        unknown: vec![],
-    })
-}
-
-// non-resumable wrapper around resumable upload
-pub async fn upload<'a>(_file: &'a web_sys::File) -> anyhow::Result<()> {
-    anyhow::bail!("uploads not available for mock client");
-}
-
-#[inline]
-pub fn origin() -> String {
-    web_sys::window()
-        .expect("window")
-        .location()
-        .origin()
-        .expect("window.location.origin")
-}
-
-pub async fn convert(req: serde_json::Value) -> anyhow::Result<()> {
-    anyhow::bail!("convert not available for mock client");
+pub async fn update_media(id: String, field: &str, value: &str) {
+    let mut media = MEDIA.lock().unwrap();
+    if media.is_none() {
+        *media = init_media()
+    }
+    let m = media.as_mut().unwrap();
+    if let Some(item) = m.get_mut(&id) {
+        match field {
+            "title" => item.title = value.to_string(),
+            "format" => item.format = value.to_string(),
+            _ => log!("unknown field for MediaItem: {}", field),
+        }
+    } else {
+        log!("no media item with id: {}", id)
+    }
 }

@@ -39,14 +39,15 @@ func main() {
 	router.PUT("/media/:id", find_id(), find_media(m), func(c *gin.Context) {
 		id := c.MustGet("id").(ID)
 		media := c.MustGet("media").(Media)
-		var update map[string]string
-		if err := c.BindJSON(&update); err != nil {
-			c.String(http.StatusBadRequest, "%s", err)
-			return
-		}
-		if err := media.Merge(update); err != nil {
-			c.String(http.StatusBadRequest, "%s", err)
-			return
+		field := c.Query("f")
+		value := c.Query("v")
+		switch field {
+		case "title":
+			media.Title = value
+		case "format":
+			media.Format = value
+		default:
+			c.String(http.StatusBadRequest, "invalid value for query param `f`")
 		}
 		m.Media.Assign(id, media)
 	})
@@ -191,11 +192,6 @@ func find_media(m *Manager) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		id, _ := c.Get("id")
 		media, ok := m.Media.Get(id.(ID))
-		// if err != nil {
-		// 	log.Printf("error finding media: %s", err)
-		// 	c.AbortWithStatus(http.StatusInternalServerError)
-		// 	return
-		// }
 		if !ok {
 			log.Printf("media not found: %s", id)
 			c.AbortWithStatus(http.StatusNotFound)
@@ -251,7 +247,7 @@ func to_client_media(dir string, origin string, media Media) gin.H {
 		"title":     media.Title,
 		"format":    media.Format,
 		"shortname": media.Shortname,
-		"url":       origin + "/media/" + path,
+		"url":       origin + "/downloads/" + path,
 	}
 }
 
@@ -274,6 +270,5 @@ func origin(c *gin.Context) {
 	if scheme == "" {
 		scheme = "http"
 	}
-	log.Printf("\n%s%s\n", scheme, host)
 	c.Set("origin", scheme+"://"+host)
 }

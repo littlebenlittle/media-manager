@@ -1,8 +1,4 @@
-use core::time;
-use std::thread;
-
 use leptos::*;
-use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 
 #[component]
 pub fn Loading(#[prop(optional)] what: Option<String>) -> impl IntoView {
@@ -44,5 +40,86 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
         >
             {move || if pending.get() { "Syncing..." } else { "Sync" }}
         </button>
+    }
+}
+
+#[component]
+pub fn ClickToEdit<Cb>(value: String, onset: Cb) -> impl IntoView
+where
+    Cb: 'static + Copy + Fn(String),
+{
+    let (edit, set_edit) = create_signal(false);
+    let val = create_rw_signal(value.clone());
+    let last_val = create_rw_signal(value);
+    let node = create_node_ref::<html::Input>();
+    let _ = leptos_use::on_click_outside(node, move |_| {
+        if edit.get_untracked() {
+            set_edit(false);
+            onset(val.get_untracked())
+        }
+    });
+    view! {
+        <input
+            class:hidden=move || !edit()
+            node_ref=node
+            type="text"
+            // value=val.get_untracked()
+            prop:value=move || val.get()
+            on:input=move |e| {
+                val.set(event_target_value(&e));
+            }
+
+            on:keydown=move |e| {
+                if e.key() == "Enter" {
+                    set_edit(false);
+                    last_val.set(val.get_untracked());
+                    onset(val.get_untracked())
+                } else if e.key() == "Escape" {
+                    set_edit(false);
+                    val.set(last_val.get_untracked());
+                }
+            }
+        />
+
+        <span
+            class:hidden=move || edit()
+            on:click=move |_| {
+                set_edit(true);
+                node.get().unwrap().select();
+            }
+        >
+
+            {move || last_val.get()}
+        </span>
+    }
+}
+
+#[cfg(web_sys_unstable_apis)]
+#[component]
+pub fn CopyButton(value: String) -> impl IntoView {
+    let leptos_use::UseClipboardReturn {
+        is_supported,
+        copy,
+        copied,
+        ..
+    } = leptos_use::use_clipboard();
+    view! {
+        <Show when=is_supported fallback=|| view! { <span></span> }>
+            <button
+                class="copy-button"
+                on:click={
+                    let copy = copy.clone();
+                    let value = value.clone();
+                    move |_| {
+                        copy(&value);
+                    }
+                }
+            >
+
+                <Show when=copied fallback=|| "Copy">
+                    "Copied!"
+                </Show>
+            </button>
+        </Show>
     }
 }
