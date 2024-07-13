@@ -2,10 +2,13 @@ use leptos::*;
 use leptos_router::*;
 
 use crate::{
-    components::{ClickToEdit, CopyButton},
+    components::ClickToEdit,
     data::{Media, MediaItem},
     log,
 };
+
+#[cfg(web_sys_unstable_apis)]
+use crate::components::CopyButton;
 
 #[component]
 pub fn MediaSelector() -> impl IntoView {
@@ -14,6 +17,15 @@ pub fn MediaSelector() -> impl IntoView {
     let search = move || query().get("q").cloned().unwrap_or_default();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").cloned());
+    let filter_sort = move |media: Media| {
+        let mut media = media
+            .clone()
+            .into_iter()
+            .filter(move |(_, m)| m.title.to_lowercase().contains(&search().to_lowercase()))
+            .collect::<Vec<_>>();
+        media.sort_by(|(_, a), (_, b)| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+        media
+    };
     view! {
         <Form method="GET" action="">
             <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
@@ -24,17 +36,9 @@ pub fn MediaSelector() -> impl IntoView {
                 {media
                     .get()
                     .map(|media| {
-                        let filtered_media = move || {
-                            media
-                                .clone()
-                                .into_iter()
-                                .filter(move |(_, m)| {
-                                    m.title.to_lowercase().contains(&search().to_lowercase())
-                                })
-                        };
                         view! {
                             <For
-                                each=filtered_media
+                                each=move || filter_sort(media.clone())
                                 key=|(mid, _)| mid.clone()
                                 children=move |(mid, m)| {
                                     view! {
@@ -80,17 +84,19 @@ pub fn MediaEditor() -> impl IntoView {
     });
     let url = create_memo(move |_| m().map(|m| m.url));
     view! {
-        <Transition fallback=|| {
-            view! { <p>"Loading Media"</p> }
-        }>
-            {move || {
-                url()
-                    .map(|url| {
-                        view! { <video controls src=url></video> }
-                    })
-            }}
+        <div class="video-ctr">
+            <Transition fallback=|| {
+                view! { <p>"Loading Media"</p> }
+            }>
+                {move || {
+                    url()
+                        .map(|url| {
+                            view! { <video controls src=url></video> }
+                        })
+                }}
 
-        </Transition>
+            </Transition>
+        </div>
         <Transition fallback=|| {
             view! { <p>"Loading Media"</p> }
         }>

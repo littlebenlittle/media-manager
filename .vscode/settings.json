@@ -1,4 +1,5 @@
 {
     "rust-analyzer.rustfmt.overrideCommand": ["leptosfmt", "--stdin", "--rustfmt"],
-    // "rust-analyzer.cargo.features": ["demo"]
+    //"rust-analyzer.cargo.features": ["demo"],
+    "rust-analyzer.server.extraEnv": {"RUSTFLAGS": "--cfg=web_sys_unstable_apis"}
 }

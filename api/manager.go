@@ -140,7 +140,13 @@ func (c *Collection[T]) List() (items map[ID]T, err error) {
 }
 
 func (c *Collection[T]) Get(id ID) (val T, ok bool) {
-	if v, ok := c.kv.Get(c.prefix + id.repr); ok {
+	items, _ := c.kv.List()
+	for i := range items {
+		log.Printf("%s", i)
+	}
+	var v string
+	v, ok = c.kv.Get(c.prefix + id.repr)
+	if ok {
 		if err := json.Unmarshal([]byte(v), &val); err != nil {
 			log.Printf("failed to unmarshal `%s`: %s", id.repr, err)
 		}

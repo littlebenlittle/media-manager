@@ -122,7 +122,7 @@ nav ul {
   // width: 85vw;
   // max-width: 1300px;
   display: grid;
-  grid-template-columns: 256px 1fr 256px;
+  grid-template-columns: 256px 1fr 128px;
   grid-template-rows: 62vh 16vh;
   grid-template-areas:
     "selector editor ctl"
@@ -149,9 +149,6 @@ nav ul {
 
 #media-selector {
   grid-area: selector;
-  // border-radius: 8px;
-  // border: #d8d038 solid 3px;
-  // padding: 1rem;
 
   input {
     height: 2rem;
@@ -217,10 +214,24 @@ nav ul {
   grid-area: editor;
   display: flex;
   flex-direction: column;
+  max-width: 720px;
 
-  // border: #881010 solid 3px;
-  // border-radius: 8px;
-  // padding: 1rem;
+  .video-ctr {
+    
+    width: 100%;
+
+    video {
+      width: 100%;
+      flex-shrink: 0;
+      flex-grow: 1;
+      flex-basis: 0px;
+    }
+  }
+
+  #detail {
+    flex-shrink: 1;
+    flex-grow: 0;
+  }
 
   >* {
     min-height: 0;
@@ -283,9 +294,7 @@ button:hover {
 
 #detail {
   text-align: left;
-
   margin-top: 2rem;
-
   flex-shrink: 1;
   flex-grow: 0;
 
