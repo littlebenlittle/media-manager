@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["ben little <ben.little@benlittle.dev>"]
 
 [features]
-demo = ["dep:lazy-static"]
+demo = ["dep:lazy_static"]
 
 [dependencies]
 leptos = { version = "0.6", features = ["csr", "nightly"] }
