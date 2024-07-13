@@ -10,18 +10,24 @@ mod components;
 mod data;
 mod pages;
 
+use pages::media::MediaSelector;
+
 #[macro_export]
 macro_rules! log {
     ( $expr:expr ) => {
-        web_sys::console::log_1(
-            &format!("{} {}: {}", file! {}, line! {}, $expr.to_string()).into()
-        )
+        {
+            web_sys::console::log_1(
+                &format!("{} {}: {}", file! {}, line! {}, $expr.to_string()).into()
+            );
+        }
     };
     ( $lit:literal $(, $expr:expr)* ) => {
-        let msg = format!($lit, $($expr,)*);
-        web_sys::console::log_1(
-            &format!("{} {}: {}", file! {}, line! {}, msg).into()
-        )
+        {
+            let msg = format!($lit, $($expr,)*);
+            web_sys::console::log_1(
+                &format!("{} {}: {}", file! {}, line! {}, msg).into()
+            );
+        }
     };
 }
 
@@ -85,8 +91,14 @@ pub fn App() -> impl IntoView {
                         path="media"
                         view=|| {
                             view! {
-                                <pages::media::MediaSelector></pages::media::MediaSelector>
-                                <Outlet/>
+                                <div id="media-dashboard">
+                                    <div id="media-selector">
+                                        <MediaSelector/>
+                                    </div>
+                                    <div id="media-editor">
+                                        <Outlet/>
+                                    </div>
+                                </div>
                             }
                         }
                     >

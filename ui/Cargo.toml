@@ -26,6 +26,7 @@ reqwest = "0.12.4"
 sha2 = "0.10.8"
 uuid = { version = "1.8.0", features = [ "v4" ] }
 base64 = "0.22.1"
+lazy_static = "1.5"
 
 [dependencies.leptos-use]
 version = "0.10.10"

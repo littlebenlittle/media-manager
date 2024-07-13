@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
-use leptos::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub type Media = HashMap<String, MediaItem>;
 
@@ -9,25 +7,7 @@ pub type Media = HashMap<String, MediaItem>;
 pub struct MediaItem {
     pub format: MediaFormat,
     pub title: String,
-}
-
-impl IntoView for MediaItem {
-    fn into_view(self) -> View {
-        view! { <p>"Media Item"</p> }.into_view()
-    }
-}
-
-impl MediaItem {
-    pub fn summary(&self) -> MediaItemSummary {
-        MediaItemSummary{
-            title: self.title.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MediaItemSummary {
-    title: String,
+    pub url: String,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -38,8 +18,13 @@ pub enum MediaFormat {
     Unknown,
 }
 
-impl IntoView for MediaItemSummary {
-    fn into_view(self) -> View {
-        view! { <p>{self.title}</p> }.into_view()
+impl From<String> for MediaFormat {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "webm" => Self::Webm,
+            "ogg" => Self::Ogg,
+            "mp4" => Self::Mp4,
+            _ => Self::Unknown,
+        }
     }
 }

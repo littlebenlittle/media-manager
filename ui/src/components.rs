@@ -46,3 +46,54 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
         </button>
     }
 }
+
+#[component]
+pub fn ClickToEdit<Cb>(value: String, onset: Cb) -> impl IntoView
+where
+    Cb: 'static + Copy + Fn(String)
+{
+    let (edit, set_edit) = create_signal(false);
+    let val = create_rw_signal(value.clone());
+    let last_val = create_rw_signal(value);
+    let node = create_node_ref::<html::Input>();
+    let _ = leptos_use::on_click_outside(node, move |_| {
+        if edit.get_untracked() {
+            set_edit(false);
+            onset(val.get_untracked())
+        }
+    });
+    view! {
+        <input
+            class:hidden=move || !edit()
+            node_ref=node
+            type="text"
+            // value=val.get_untracked()
+            prop:value=move || val.get()
+            on:input=move |e| {
+                val.set(event_target_value(&e));
+            }
+
+            on:keydown=move |e| {
+                if e.key() == "Enter" {
+                    set_edit(false);
+                    last_val.set(val.get_untracked());
+                    onset(val.get_untracked())
+                } else if e.key() == "Escape" {
+                    set_edit(false);
+                    val.set(last_val.get_untracked());
+                }
+            }
+        />
+
+        <span
+            class:hidden=move || edit()
+            on:click=move |_| {
+                set_edit(true);
+                node.get().unwrap().select();
+            }
+        >
+
+            {move || last_val.get()}
+        </span>
+    }
+}

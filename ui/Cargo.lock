@@ -2260,6 +2260,7 @@ dependencies = [
  "gloo-net",
  "gloo-timers",
  "js-sys",
+ "lazy_static",
  "leptos",
  "leptos-use",
  "leptos_meta",
