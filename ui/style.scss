@@ -229,16 +229,16 @@ nav ul {
 }
 
 button.copy-button {
-	width: 4rem;
-	background-color: #333;
-	color: #999;
-	font-weight: bold;
-	border: solid 1px #888;
-	border-radius: 3px;
+  width: 4rem;
+  background-color: #333;
+  color: #999;
+  font-weight: bold;
+  border: solid 1px #888;
+  border-radius: 3px;
 }
 
 button.copy-button:hover {
-	background-color: #555;
+  background-color: #555;
 }
 
 #detail td .media-url {
@@ -484,5 +484,16 @@ button.copy-button:hover {
 
   >* {
     margin-bottom: 1rem;
+  }
+}
+
+.content {
+  a {
+    color: #7cf;
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: #5ad;
   }
 }

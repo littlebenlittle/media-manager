@@ -4,7 +4,7 @@ use leptos::*;
 #[component]
 pub fn Home() -> impl IntoView {
     view! {
-        <div id="media-manager-description">
+        <div id="media-manager-description" class="content">
             <h2>"Welcome to Media Manager!"</h2>
             <p>
                 "Media Manager helps you take charge of your own media library by \
@@ -27,8 +27,9 @@ pub fn Home() -> impl IntoView {
                          isn't an API server and all requests to the API return fake \
                          responses. If you want to experiment with the full version,  \
                          you can clone the source code from the "
-                        <a href=github_repo target="_blank">"GitHub repo"</a>
-                        " and follow the instructions in the README."
+                        <a href=github_repo target="_blank">
+                            "GitHub repo"
+                        </a> " and follow the instructions in the README."
                     </p>
                 }
             }

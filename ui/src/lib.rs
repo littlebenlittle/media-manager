@@ -44,7 +44,11 @@ macro_rules! unwrap_js {
 /// Return the relative path from `APP_BASE_PATH`
 pub(crate) fn path(p: &str) -> String {
     if let Some(base) = option_env!("APP_BASE_PATH") {
-        format!("/{}/{}", base, p)
+        if p == "" {
+            format!("/{}", base)
+        } else {
+            format!("/{}/{}", base, p)
+        }
     } else {
         format!("/{}", p)
     }
@@ -86,7 +90,7 @@ pub fn App() -> impl IntoView {
                     </div>
                 </div>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
-                    <Route path="" view=pages::Home/>
+                    <Route path="/" view=pages::Home/>
                     <Route
                         path="media"
                         view=|| {
