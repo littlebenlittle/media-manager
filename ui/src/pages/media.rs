@@ -12,6 +12,8 @@ pub fn MediaSelector() -> impl IntoView {
     let media = use_context::<Resource<(), Media>>().unwrap();
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
+    let params = use_params_map();
+    let id = move || params.with(|p| p.get("id").cloned());
     view! {
         <Form method="GET" action="">
             <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
@@ -33,13 +35,19 @@ pub fn MediaSelector() -> impl IntoView {
                         view! {
                             <For
                                 each=filtered_media
-                                key=|(id, _)| id.clone()
-                                children=move |(id, m)| {
+                                key=|(mid, _)| mid.clone()
+                                children=move |(mid, m)| {
                                     view! {
-                                        <a href=move || crate::path(
-                                            &format!("media/{}{}", id, query().to_query_string()),
-                                        )>
-                                            <li>{m.title}</li>
+                                        <a href={
+                                            let mid = mid.clone();
+                                            move || crate::path(
+                                                &format!("media/{}{}", mid, query().to_query_string()),
+                                            )
+                                        }>
+                                            // TODO why is this class not reacing to changes in id?
+                                            <li class:selected=move || {
+                                                Some(mid.clone()) == id()
+                                            }>{m.title}</li>
                                         </a>
                                     }
                                 }
@@ -138,27 +146,33 @@ where
             </tr>
             <tr>
                 <td>"URL"</td>
-                <td class="media-url">
-                    {#[cfg(web_sys_unstable_apis)]
-                    {
-                        let url = media.url.clone();
-                        view! {
-                            <Show when=is_supported fallback=|| view! { <span></span> }>
-                                <button on:click={
-                                    let copy = copy.clone();
-                                    let url = url.clone();
-                                    move |_| {
-                                        copy(&url);
-                                    }
-                                }>
-                                    <Show when=copied fallback=|| "Copy">
-                                        "Copied!"
-                                    </Show>
-                                </button>
-                            </Show>
-                        }
-                    }}
-                    <span class="url-text">{media.url.clone()}</span>
+                <td>
+                    <span class="media-url">
+                        {#[cfg(web_sys_unstable_apis)]
+                        {
+                            let url = media.url.clone();
+                            view! {
+                                <Show when=is_supported fallback=|| view! { <span></span> }>
+                                    <button
+                                        class="copy-button"
+                                        on:click={
+                                            let copy = copy.clone();
+                                            let url = url.clone();
+                                            move |_| {
+                                                copy(&url);
+                                            }
+                                        }
+                                    >
+
+                                        <Show when=copied fallback=|| "Copy">
+                                            "Copied!"
+                                        </Show>
+                                    </button>
+                                </Show>
+                            }
+                        }}
+                        <span class="url-text">{media.url.clone()}</span>
+                    </span>
                 </td>
             </tr>
         </table>

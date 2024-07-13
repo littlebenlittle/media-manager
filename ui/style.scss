@@ -1,10 +1,10 @@
 /* --------------------- Open Props --------------------------- */
 
-@import "https://unpkg.com/open-props";
+// @import "https://unpkg.com/open-props";
 
 /* optional imports that use the props */
-@import "https://unpkg.com/open-props/normalize.min.css";
-@import "https://unpkg.com/open-props/buttons.min.css";
+// @import "https://unpkg.com/open-props/normalize.min.css";
+// @import "https://unpkg.com/open-props/buttons.min.css";
 
 /* ------------------------------------------------------------ */
 
@@ -14,26 +14,25 @@ body {
   margin: 0;
 }
 
-html {
-  height: 100vh;
-  width: 100vw;
-}
-
 body {
+  background-color: #222;
+  color: #eee;
   font-family: sans-serif;
   text-align: center;
   display: flex;
-  // flex-direction: row;
-  // align-content: center;
-  // justify-content: center;
-  height: 100%;
-  width: 100%;
+}
+
+input {
+  background-color: #121212;
+  color: #eee;
+}
+
+a {
+  color: #eee;
+  text-decoration: none;
 }
 
 main {
-  height: 100%;
-  width: 100%;
-  max-width: 1540px;
   overflow-y: auto;
   padding-left: 3rem;
   padding-right: 3rem;
@@ -83,15 +82,10 @@ main {
 
 }
 
-#nav-container {
-  height: 100%;
-}
-
 nav {
-  height: 100%;
+  height: 100vh;
   width: 256px;
   background-color: #353550;
-  padding-top: 3rem;
   position: absolute;
   transform: translate(-236px, 0);
   transition: transform 0.5s ease-in 0.2s;
@@ -158,6 +152,13 @@ nav ul {
   // border: #d8d038 solid 3px;
   // padding: 1rem;
 
+  input {
+    border: none;
+    height: 2rem;
+    font-size: 1rem;
+    text-align: center;
+  }
+
   ul {
     background-color: #121212;
     padding-left: 0;
@@ -170,11 +171,11 @@ nav ul {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    height: 4rem;
   }
 
   li:hover {
     border-color: #5a5a5a;
+    border-style: solid;
     border-width: 3px;
     padding: 13px;
   }
@@ -227,14 +228,24 @@ nav ul {
   }
 }
 
-.media-url {
+button.copy-button {
+	width: 4rem;
+	background-color: #333;
+	color: #999;
+	font-weight: bold;
+	border: solid 1px #888;
+	border-radius: 3px;
+}
+
+button.copy-button:hover {
+	background-color: #555;
+}
+
+#detail td .media-url {
   display: flex;
   gap: 1rem;
-  
-  button {
-    width: 6rem;
-  }
-  
+
+
   .url-text {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -303,15 +314,15 @@ nav ul {
     text-wrap: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    
+    padding: 8px;
+
     span {
-      width: 100%;
       display: block;
     }
   }
 
   td:first-child {
-    width: 25%;
+    width: 12.5%;
   }
 
   td>* {
@@ -470,7 +481,7 @@ nav ul {
   flex-direction: column;
   align-items: start;
   text-align: left;
-  
+
   >* {
     margin-bottom: 1rem;
   }
