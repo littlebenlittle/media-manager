@@ -107,10 +107,7 @@ nav ul {
   }
 }
 
-#video-dashboard {
-  // height: 70vh;
-  // width: 85vw;
-  // max-width: 1300px;
+.dashboard {
   display: grid;
   grid-template-columns: 256px 1fr 128px;
   grid-template-rows: 62vh 16vh;
@@ -121,23 +118,7 @@ nav ul {
   row-gap: 1rem;
 }
 
-#upload-form {
-  grid-area: upload;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1rem;
-
-  // border-width: 3px;
-  // border-radius: 8px;
-  // border-color: #91a7ff;
-
-  >* {
-    margin-bottom: 1rem;
-  }
-}
-
-#video-selector {
+.selector {
   grid-area: selector;
 
   input {
@@ -200,17 +181,17 @@ nav ul {
   }
 }
 
-#video-editor {
+.editor {
   grid-area: editor;
   display: flex;
   flex-direction: column;
   max-width: 720px;
 
-  .video-ctr {
+  .view {
 
     width: 100%;
 
-    video {
+    video, img {
       width: 100%;
       flex-shrink: 0;
       flex-grow: 1;
@@ -242,7 +223,7 @@ button:hover {
   background-color: #555;
 }
 
-#detail td .video-url {
+#detail td .url {
   display: flex;
   gap: 1rem;
 

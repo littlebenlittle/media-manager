@@ -10,8 +10,8 @@ mod components;
 mod data;
 mod pages;
 
-use pages::videos::VideoEditor;
-use pages::videos::VideoSelector;
+use pages::images::{ImageEditor, ImageSelector};
+use pages::videos::{VideoEditor, VideoSelector};
 
 #[macro_export]
 macro_rules! log {
@@ -58,7 +58,9 @@ pub(crate) fn path(p: &str) -> String {
 #[component]
 pub fn App() -> impl IntoView {
     let videos = create_local_resource(|| (), |_| async { crate::client::get_videos().await });
+    let images = create_local_resource(|| (), |_| async { crate::client::get_images().await });
     provide_context(videos);
+    provide_context(images);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -74,6 +76,9 @@ pub fn App() -> impl IntoView {
                         </li>
                         <li>
                             <a href=path("videos")>"Videos"</a>
+                        </li>
+                        <li>
+                            <a href=path("images")>"Images"</a>
                         </li>
                     </ul>
                 </nav>
@@ -96,11 +101,11 @@ pub fn App() -> impl IntoView {
                         path="videos"
                         view=|| {
                             view! {
-                                <div id="video-dashboard">
-                                    <div id="video-selector">
+                                <div class="dashboard">
+                                    <div class="selector">
                                         <VideoSelector/>
                                     </div>
-                                    <div id="video-editor">
+                                    <div class="editor">
                                         <Outlet/>
                                     </div>
                                 </div>
@@ -110,6 +115,26 @@ pub fn App() -> impl IntoView {
 
                         <Route path="" view=|| view! { <p>"No Video Selected"</p> }/>
                         <Route path=":id" view=VideoEditor/>
+
+                    </Route>
+                    <Route
+                        path="images"
+                        view=|| {
+                            view! {
+                                <div class="dashboard">
+                                    <div class="selector">
+                                        <ImageSelector/>
+                                    </div>
+                                    <div class="editor">
+                                        <Outlet/>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    >
+
+                        <Route path="" view=|| view! { <p>"No Image Selected"</p> }/>
+                        <Route path=":id" view=ImageEditor/>
 
                     </Route>
                     <Route path="/*" view=pages::NotFound/>

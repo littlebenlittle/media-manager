@@ -1,4 +1,5 @@
 pub mod home;
+pub mod images;
 pub mod not_found;
 pub mod videos;
 

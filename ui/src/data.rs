@@ -9,3 +9,12 @@ pub struct Video {
     pub title: String,
     pub url: String,
 }
+
+pub type Images = HashMap<String, Image>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Image {
+    pub format: String,
+    pub title: String,
+    pub url: String,
+}

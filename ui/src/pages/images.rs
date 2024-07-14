@@ -1,30 +1,27 @@
 use leptos::*;
 use leptos_router::*;
 
-use crate::{
-    components::ClickToEdit,
-    data::{Video, Videos},
-    log,
-};
+use crate::components::ClickToEdit;
+use crate::data::{Image, Images};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
 
 #[component]
-pub fn VideoSelector() -> impl IntoView {
-    let videos = use_context::<Resource<(), Videos>>().unwrap();
+pub fn ImageSelector() -> impl IntoView {
+    let images = use_context::<Resource<(), Images>>().unwrap();
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").cloned());
-    let filter_sort = move |videos: Videos| {
-        let mut videos = videos
+    let filter_sort = move |images: Images| {
+        let mut images = images
             .clone()
             .into_iter()
             .filter(move |(_, m)| m.title.to_lowercase().contains(&search().to_lowercase()))
             .collect::<Vec<_>>();
-        videos.sort_by(|(_, a), (_, b)| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
-        videos
+        images.sort_by(|(_, a), (_, b)| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+        images
     };
     view! {
         <Form method="GET" action="">
@@ -33,12 +30,12 @@ pub fn VideoSelector() -> impl IntoView {
         <Transition fallback=|| view! { <p>"Loading..."</p> }>
             <ul>
 
-                {videos
+                {images
                     .get()
-                    .map(|videos| {
+                    .map(|images| {
                         view! {
                             <For
-                                each=move || filter_sort(videos.clone())
+                                each=move || filter_sort(images.clone())
                                 key=|(mid, _)| mid.clone()
                                 children=move |(mid, m)| {
                                     view! {
@@ -47,7 +44,7 @@ pub fn VideoSelector() -> impl IntoView {
                                             href={
                                                 let mid = mid.clone();
                                                 move || crate::path(
-                                                    &format!("videos/{}{}", mid, query().to_query_string()),
+                                                    &format!("images/{}{}", mid, query().to_query_string()),
                                                 )
                                             }
                                         >
@@ -69,34 +66,34 @@ pub fn VideoSelector() -> impl IntoView {
 }
 
 #[component]
-pub fn VideoEditor() -> impl IntoView {
+pub fn ImageEditor() -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let videos = use_context::<Resource<(), Videos>>().unwrap();
-    let v = move || {
-        videos
+    let images = use_context::<Resource<(), Images>>().unwrap();
+    let i = move || {
+        images
             .get()
-            .map(|videos| videos.get(&id()).cloned())
+            .map(|images| images.get(&id()).cloned())
             .flatten()
     };
-    let update_video = create_action(move |(field, value): &(String, String)| {
+    let update_image = create_action(move |(field, value): &(String, String)| {
         let (field, value) = (field.clone(), value.clone());
         let id = id();
         async move {
-            crate::client::update_video(id, &field, &value).await;
-            videos.refetch();
+            crate::client::update_image(id, &field, &value).await;
+            images.refetch();
         }
     });
-    let url = create_memo(move |_| v().map(|m| m.url));
+    let url = create_memo(move |_| i().map(|m| m.url));
     view! {
         <div class="view">
             <Transition fallback=|| {
-                view! { <p>"Loading Video"</p> }
+                view! { <p>"Loading Image"</p> }
             }>
                 {move || {
                     url()
                         .map(|url| {
-                            view! { <video controls src=url></video> }
+                            view! { <img src=url/> }
                         })
                 }}
 
@@ -106,14 +103,14 @@ pub fn VideoEditor() -> impl IntoView {
             view! { <p>"Loading Video"</p> }
         }>
             {move || {
-                v()
-                    .map(|v| {
+                i()
+                    .map(|i| {
                         view! {
                             <div id="detail">
                                 <DetailTable
-                                    video=v
-                                    update_video=move |field, value| {
-                                        update_video.dispatch((field, value))
+                                    image=i
+                                    update_image=move |field, value| {
+                                        update_image.dispatch((field, value))
                                     }
                                 />
 
@@ -128,19 +125,19 @@ pub fn VideoEditor() -> impl IntoView {
 
 #[allow(unexpected_cfgs)]
 #[component]
-fn DetailTable<Cb>(video: Video, update_video: Cb) -> impl IntoView
+fn DetailTable<Cb>(image: Image, update_image: Cb) -> impl IntoView
 where
     Cb: 'static + Copy + Fn(String, String),
 {
     let download_name = {
-        if let Some(pos) = video.title.rfind(".") {
-            if &video.title[pos + 1..] == video.format {
-                video.title.clone()
+        if let Some(pos) = image.title.rfind(".") {
+            if &image.title[pos + 1..] == image.format {
+                image.title.clone()
             } else {
-                video.title.clone() + "." + &video.format
+                image.title.clone() + "." + &image.format
             }
         } else {
-            video.title.clone() + "." + &video.format
+            image.title.clone() + "." + &image.format
         }
     };
     view! {
@@ -149,8 +146,8 @@ where
                 <td>"Title"</td>
                 <td>
                     <ClickToEdit
-                        value=video.title
-                        onset=move |value| update_video("title".to_string(), value)
+                        value=image.title
+                        onset=move |value| update_image("title".to_string(), value)
                     />
                 </td>
             </tr>
@@ -158,17 +155,17 @@ where
                 <td>"Format"</td>
                 <td>
                     <ClickToEdit
-                        value=video.format
-                        onset=move |value| update_video("format".to_string(), value)
+                        value=image.format
+                        onset=move |value| update_image("format".to_string(), value)
                     />
                 </td>
             </tr>
             <tr>
                 <td>"URL"</td>
                 <td>
-                    <span class="video-url">
+                    <span class="url">
 
-                        <a download=download_name href=video.url.clone()>
+                        <a download=download_name href=image.url.clone()>
                             <button>"Download"</button>
                         </a>
 
@@ -176,13 +173,13 @@ where
                             #[cfg(web_sys_unstable_apis)]
                             view! {
                                 <span>
-                                    <CopyButton value=video.url.clone()/>
+                                    <CopyButton value=image.url.clone()/>
                                 </span>
                             }
                         }
 
-                        <span class="url-text" title=video.url.clone()>
-                            {video.url.clone()}
+                        <span class="url-text" title=image.url.clone()>
+                            {image.url.clone()}
                         </span>
                     </span>
                 </td>
