@@ -1,4 +1,4 @@
-use crate::{data::Media, log};
+use crate::{data::Videos, log};
 
 #[inline]
 fn origin() -> String {
@@ -16,7 +16,7 @@ fn origin() -> String {
     // ^^ DEV ^^
 }
 
-pub async fn get_media() -> Media {
+pub async fn get_videos() -> Videos {
     let response = gloo_net::http::Request::get(&format!("{}/api/media", origin()))
         .send()
         .await;
@@ -24,7 +24,7 @@ pub async fn get_media() -> Media {
         // browser already logs the error details
         return Default::default();
     }
-    match response.unwrap().json::<Media>().await {
+    match response.unwrap().json::<Videos>().await {
         Ok(v) => v,
         Err(e) => {
             log!("{}", e);
@@ -33,7 +33,7 @@ pub async fn get_media() -> Media {
     }
 }
 
-pub async fn update_media(id: String, field: &str, value: &str) {
+pub async fn update_video(id: String, field: &str, value: &str) {
     if gloo_net::http::Request::put(&format!("{}/api/media/{}", origin(), id))
         .query([("f", field), ("v", value)])
         .send()

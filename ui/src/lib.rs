@@ -10,7 +10,8 @@ mod components;
 mod data;
 mod pages;
 
-use pages::media::MediaSelector;
+use pages::videos::VideoEditor;
+use pages::videos::VideoSelector;
 
 #[macro_export]
 macro_rules! log {
@@ -56,8 +57,8 @@ pub(crate) fn path(p: &str) -> String {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
-    provide_context(media);
+    let videos = create_local_resource(|| (), |_| async { crate::client::get_videos().await });
+    provide_context(videos);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -72,7 +73,7 @@ pub fn App() -> impl IntoView {
                             <a href=path("")>"Home"</a>
                         </li>
                         <li>
-                            <a href=path("media")>"Media"</a>
+                            <a href=path("videos")>"Videos"</a>
                         </li>
                     </ul>
                 </nav>
@@ -92,14 +93,14 @@ pub fn App() -> impl IntoView {
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
-                        path="media"
+                        path="videos"
                         view=|| {
                             view! {
-                                <div id="media-dashboard">
-                                    <div id="media-selector">
-                                        <MediaSelector/>
+                                <div id="video-dashboard">
+                                    <div id="video-selector">
+                                        <VideoSelector/>
                                     </div>
-                                    <div id="media-editor">
+                                    <div id="video-editor">
                                         <Outlet/>
                                     </div>
                                 </div>
@@ -107,8 +108,8 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route path="" view=|| view! { <p>"No Media Selected"</p> }/>
-                        <Route path=":id" view=pages::media::MediaEditor/>
+                        <Route path="" view=|| view! { <p>"No Video Selected"</p> }/>
+                        <Route path=":id" view=VideoEditor/>
 
                     </Route>
                     <Route path="/*" view=pages::NotFound/>

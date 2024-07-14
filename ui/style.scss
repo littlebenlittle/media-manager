@@ -107,7 +107,7 @@ nav ul {
   }
 }
 
-#media-dashboard {
+#video-dashboard {
   // height: 70vh;
   // width: 85vw;
   // max-width: 1300px;
@@ -137,7 +137,7 @@ nav ul {
   }
 }
 
-#media-selector {
+#video-selector {
   grid-area: selector;
 
   input {
@@ -200,7 +200,7 @@ nav ul {
   }
 }
 
-#media-editor {
+#video-editor {
   grid-area: editor;
   display: flex;
   flex-direction: column;
@@ -242,7 +242,7 @@ button:hover {
   background-color: #555;
 }
 
-#detail td .media-url {
+#detail td .video-url {
   display: flex;
   gap: 1rem;
 
@@ -370,71 +370,6 @@ button:hover {
   color: #91a7ff;
 }
 
-#media-convert-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 12px 1fr 12px 1fr;
-  grid-template-areas:
-    "format .      "
-    "format options"
-    "format .      "
-    "format submit ";
-  padding-bottom: 1rem;
-}
-
-#media-convert-format {
-  grid-area: format;
-  display: flex;
-  flex-direction: column;
-  width: fit-content;
-  justify-content: center;
-}
-
-#media-convert-format label {
-  width: fit-content;
-}
-
-#media-convert-options {
-  grid-area: options;
-  width: fit-content;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-#media-convert-options>* {
-  width: fit-content;
-}
-
-#media-convert-submit {
-  grid-area: submit;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-#convert-form-format {
-  display: grid;
-  margin-bottom: 1rem;
-  width: fit-content;
-}
-
-#convert-form-submit {
-  margin-top: 8px;
-}
-
-#media-manager-description {
-  text-align: left;
-}
-
-#media-manager-description>* {
-  margin-bottom: 1rem;
-}
-
-#select-media-source-notice {
-  margin: 1rem;
-}
-
 #jobs-list {
   padding: 0;
 
@@ -479,6 +414,9 @@ button:hover {
 }
 
 .content {
+  display: block;
+  text-align: left;
+
   a {
     color: #7cf;
     text-decoration: underline;
