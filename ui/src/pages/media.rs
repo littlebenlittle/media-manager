@@ -127,6 +127,17 @@ fn DetailTable<Cb>(media: MediaItem, update_media: Cb) -> impl IntoView
 where
     Cb: 'static + Copy + Fn(String, String),
 {
+    let download_name = {
+        if let Some(pos) = media.title.rfind(".") {
+            if &media.title[pos + 1..] == media.format {
+                media.title.clone()
+            } else {
+                media.title.clone() + "." + &media.format
+            }
+        } else {
+            media.title.clone() + "." + &media.format
+        }
+    };
     view! {
         <table>
             <tr>
@@ -152,7 +163,7 @@ where
                 <td>
                     <span class="media-url">
 
-                        <a download href=media.url.clone()>
+                        <a download=download_name href=media.url.clone()>
                             <button>"Download"</button>
                         </a>
 
