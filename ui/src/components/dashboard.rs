@@ -6,10 +6,6 @@ use crate::{components::ClickToEdit, data::Media};
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
 
-// TODO There should be a trait for `T` to implement to avoid all these
-// closure arguments. For now leaving them explicit because it's easier
-// to reason about locatlly.
-
 #[component]
 pub fn Selector<T, F>(items: Resource<(), Vec<T>>, path: String, filter: F) -> impl IntoView
 where
