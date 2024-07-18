@@ -2,11 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use std::{cmp::Ordering, collections::HashMap, hash::Hash};
 
-use crate::{
-    components::ClickToEdit,
-    data::{Video, Videos},
-    log,
-};
+use crate::{components::ClickToEdit, data::Media, log};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
@@ -16,19 +12,10 @@ use crate::components::CopyButton;
 // to reason about locatlly.
 
 #[component]
-pub fn Selector<T, K, F, KF, TF>(
-    items: Resource<(), Vec<T>>,
-    path: String,
-    filter: F,
-    key: KF,
-    title: TF,
-) -> impl IntoView
+pub fn Selector<T, F>(items: Resource<(), Vec<T>>, path: String, filter: F) -> impl IntoView
 where
-    T: Clone + 'static,
-    K: Eq + Hash + ToString + 'static,
-    KF: Fn(&T) -> K + Copy + 'static,
+    T: Media + 'static,
     F: Fn(String, &T) -> bool + Copy + 'static,
-    TF: Fn(&T) -> String + Copy + 'static,
 {
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
@@ -49,17 +36,15 @@ where
                                     items.clone().into_iter().filter(move |t| filter(search(), t))
                                 }
 
-                                key=key
+                                key=|item| item.key()
                                 children={
                                     let path = path.clone();
-                                    move |t| {
-                                        let key = key(&t).to_string();
-                                        let title = title(&t);
+                                    move |item| {
                                         view! {
                                             <a
-                                                title=title.clone()
+                                                title=item.title()
                                                 href={
-                                                    let key = key.clone();
+                                                    let key = item.key();
                                                     let path = path.clone();
                                                     move || crate::path(
                                                         &format!("{}/{}{}", path, key, query().to_query_string()),
@@ -69,9 +54,9 @@ where
 
                                                 // TODO why is this class not reacing to changes in id?
                                                 <li class:selected={
-                                                    let key = key.clone();
+                                                    let key = item.key();
                                                     move || Some(key.clone()) == id()
-                                                }>{title}</li>
+                                                }>{item.title()}</li>
                                             </a>
                                         }
                                     }
@@ -86,16 +71,9 @@ where
 }
 
 #[component]
-pub fn Editor<T, K, KF, UF, FF>(
-    items: Resource<(), Vec<T>>,
-    key: KF,
-    update: UF,
-    fields: FF,
-) -> impl IntoView
+pub fn Editor<T, UF, FF>(items: Resource<(), Vec<T>>, update: UF, fields: FF) -> impl IntoView
 where
-    T: Clone + IntoView + 'static,
-    K: Eq + Hash + ToString + 'static,
-    KF: Fn(&T) -> K + Copy + 'static,
+    T: Media + 'static,
     UF: Fn(&str, &str, &str) + Copy + 'static,
     FF: Fn(&T) -> Vec<(String, String, bool)> + Copy + 'static,
 {
@@ -104,7 +82,7 @@ where
     let item = move || {
         items
             .get()
-            .map(|items| items.iter().find(|t| key(t).to_string() == id()).cloned())
+            .map(|items| items.iter().find(|item| item.key() == id()).cloned())
             .flatten()
     };
     view! {
@@ -135,6 +113,7 @@ where
 #[component]
 fn DetailTable<T, UF, FF>(item: T, update: UF, fields: FF) -> impl IntoView
 where
+    T: Media,
     // get the fields of T: name, init value, editable (more? copyable? links?)
     FF: Fn(&T) -> Vec<(String, String, bool)>,
     UF: Fn(&str, &str, &str) + Copy + 'static,
@@ -143,6 +122,24 @@ where
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
     view! {
+        <div class="media-url">
+            <a download=download_name(&item) href=item.url()>
+                <button>"Download"</button>
+            </a>
+
+            {
+                #[cfg(web_sys_unstable_apis)]
+                view! {
+                    <span>
+                        <CopyButton value=item.url()/>
+                    </span>
+                }
+            }
+
+            <span class="url-text" title=item.url()>
+                {item.url()}
+            </span>
+        </div>
         <table>
             <For
                 each=move || fields.clone()
@@ -175,13 +172,12 @@ where
     }
 }
 
-fn download_name<T, TF, FF>(item: &T, title: TF, format: FF) -> String
+fn download_name<T>(item: &T) -> String
 where
-    TF: Fn(&T) -> String,
-    FF: Fn(&T) -> String,
+    T: Media,
 {
-    let title = title(item);
-    let format = format(item);
+    let title = item.title();
+    let format = item.format();
     if let Some(pos) = title.rfind(".") {
         if &title[pos..] == &format {
             return title.clone();

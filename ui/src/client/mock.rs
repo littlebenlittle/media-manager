@@ -1,7 +1,7 @@
 //! Generate fake data for faster debugging cycles.
 
 use crate::{
-    data::{Image, Images, Video, Videos},
+    data::{Image, Video},
     log,
 };
 use std::sync::Mutex;

@@ -102,9 +102,7 @@ pub fn App() -> impl IntoView {
                                         <Selector
                                             path="videos".to_string()
                                             items=videos
-                                            key=|video| video.id.clone()
                                             filter=|search, video| video.title.contains(&search)
-                                            title=|video| video.title.clone()
                                         />
                                     </div>
                                     <div class="editor">
@@ -129,7 +127,6 @@ pub fn App() -> impl IntoView {
                                 view! {
                                     <Editor
                                         items=videos
-                                        key=|video| video.id.clone()
                                         update=move |id, field, value| {
                                             update_video
                                                 .dispatch((
@@ -143,7 +140,6 @@ pub fn App() -> impl IntoView {
                                             vec![
                                                 ("title".to_string(), video.title.clone(), true),
                                                 ("format".to_string(), video.format.clone(), true),
-                                                ("url".to_string(), video.url.clone(), false),
                                             ]
                                         }
                                     />
@@ -162,9 +158,7 @@ pub fn App() -> impl IntoView {
                                         <Selector
                                             path="images".to_string()
                                             items=images
-                                            key=|image| image.id.clone()
                                             filter=|search, image| image.title.contains(&search)
-                                            title=|image| image.title.clone()
                                         />
                                     </div>
                                     <div class="editor">
@@ -189,7 +183,6 @@ pub fn App() -> impl IntoView {
                                 view! {
                                     <Editor
                                         items=images
-                                        key=|image| image.id.clone()
                                         update=move |id, field, value| {
                                             update_image
                                                 .dispatch((
@@ -203,7 +196,6 @@ pub fn App() -> impl IntoView {
                                             vec![
                                                 ("title".to_string(), image.title.clone(), true),
                                                 ("format".to_string(), image.format.clone(), true),
-                                                ("url".to_string(), image.url.clone(), false),
                                             ]
                                         }
                                     />
@@ -212,26 +204,6 @@ pub fn App() -> impl IntoView {
                         />
 
                     </Route>
-                    // <Route
-                    // path="images"
-                    // view=|| {
-                    // view! {
-                    // <div class="dashboard">
-                    // <div class="selector">
-                    // <ImageSelector/>
-                    // </div>
-                    // <div class="editor">
-                    // <Outlet/>
-                    // </div>
-                    // </div>
-                    // }
-                    // }
-                    // >
-
-                    // <Route path="" view=|| view! { <p>"No Image Selected"</p> }/>
-                    // <Route path=":id" view=ImageEditor/>
-
-                    // </Route>
                     <Route path="/*" view=pages::NotFound/>
                 </Routes>
             </main>

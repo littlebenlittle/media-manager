@@ -191,7 +191,8 @@ nav ul {
 
     width: 100%;
 
-    video, img {
+    video,
+    img {
       width: 100%;
       flex-shrink: 0;
       flex-grow: 1;
@@ -221,17 +222,6 @@ button {
 
 button:hover {
   background-color: #555;
-}
-
-.detail td .url {
-  display: flex;
-  gap: 1rem;
-
-
-  .url-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 }
 
 #view {
@@ -265,17 +255,22 @@ button:hover {
 
 .detail {
   text-align: left;
-  margin-top: 2rem;
   flex-shrink: 1;
   flex-grow: 0;
+    color: #a0a0a0;
 
-  >* {
-    margin-bottom: 1rem;
-  }
+  .media-url {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
 
-  h3 {
-    font-size: larger;
-    padding-left: 1rem;
+    .url-text {
+      overflow: hidden;
+      text-wrap: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
   }
 
   table {
@@ -284,13 +279,8 @@ button:hover {
     width: 100%;
   }
 
-  tr:not(.editable) {
-    color: #a0a0a0;
-  }
-
   td {
     border: 3px solid #3a3a3a;
-    text-align: left;
     text-wrap: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -299,7 +289,7 @@ button:hover {
     span {
       display: block;
     }
-    
+
     input {
       width: 100%;
     }

@@ -2,7 +2,12 @@ use leptos::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub type Videos = HashMap<String, Video>;
+pub trait Media: Clone + IntoView {
+    fn url(&self) -> String;
+    fn title(&self) -> String;
+    fn format(&self) -> String;
+    fn key(&self) -> String;
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Video {
@@ -10,6 +15,21 @@ pub struct Video {
     pub format: String,
     pub title: String,
     pub url: String,
+}
+
+impl Media for Video {
+    fn format(&self) -> String {
+        self.format.clone()
+    }
+    fn key(&self) -> String {
+        self.id.clone()
+    }
+    fn title(&self) -> String {
+        self.title.clone()
+    }
+    fn url(&self) -> String {
+        self.url.clone()
+    }
 }
 
 impl IntoView for Video {
@@ -23,8 +43,6 @@ impl IntoView for Video {
     }
 }
 
-pub type Images = HashMap<String, Image>;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Image {
     pub id: String,
@@ -36,5 +54,20 @@ pub struct Image {
 impl IntoView for Image {
     fn into_view(self) -> leptos::View {
         view! { <img src=self.url/> }.into_view()
+    }
+}
+
+impl Media for Image {
+    fn format(&self) -> String {
+        self.format.clone()
+    }
+    fn key(&self) -> String {
+        self.id.clone()
+    }
+    fn title(&self) -> String {
+        self.title.clone()
+    }
+    fn url(&self) -> String {
+        self.url.clone()
     }
 }
