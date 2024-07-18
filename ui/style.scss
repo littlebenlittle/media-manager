@@ -199,7 +199,7 @@ nav ul {
     }
   }
 
-  #detail {
+  .detail {
     flex-shrink: 1;
     flex-grow: 0;
   }
@@ -223,7 +223,7 @@ button:hover {
   background-color: #555;
 }
 
-#detail td .url {
+.detail td .url {
   display: flex;
   gap: 1rem;
 
@@ -263,7 +263,7 @@ button:hover {
   }
 }
 
-#detail {
+.detail {
   text-align: left;
   margin-top: 2rem;
   flex-shrink: 1;

@@ -8,6 +8,8 @@
     - [x] Select should preserve scroll
 - [x] Filter media in selector by query
 - [x] Media detial on hover
+- [ ] Toaster notifications
+    - [ ] new media
     
 ### API
 

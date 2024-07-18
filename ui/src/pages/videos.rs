@@ -132,24 +132,13 @@ fn DetailTable<Cb>(video: Video, update_video: Cb) -> impl IntoView
 where
     Cb: 'static + Copy + Fn(String, String),
 {
-    let download_name = {
-        if let Some(pos) = video.title.rfind(".") {
-            if &video.title[pos + 1..] == video.format {
-                video.title.clone()
-            } else {
-                video.title.clone() + "." + &video.format
-            }
-        } else {
-            video.title.clone() + "." + &video.format
-        }
-    };
     view! {
         <table>
             <tr>
                 <td>"Title"</td>
                 <td>
                     <ClickToEdit
-                        value=video.title
+                        value=video.title.clone()
                         onset=move |value| update_video("title".to_string(), value)
                     />
                 </td>
@@ -158,7 +147,7 @@ where
                 <td>"Format"</td>
                 <td>
                     <ClickToEdit
-                        value=video.format
+                        value=video.format.clone()
                         onset=move |value| update_video("format".to_string(), value)
                     />
                 </td>
@@ -168,7 +157,7 @@ where
                 <td>
                     <span class="video-url">
 
-                        <a download=download_name href=video.url.clone()>
+                        <a download=download_name(&video) href=video.url.clone()>
                             <button>"Download"</button>
                         </a>
 
@@ -189,4 +178,13 @@ where
             </tr>
         </table>
     }
+}
+
+fn download_name(video: &Video) -> String {
+    if let Some(pos) = video.title.rfind(".") {
+        if &video.title[pos..] == &video.format {
+            return video.title.clone();
+        }
+    }
+    format!("{}.{}", video.title, video.format)
 }

@@ -1,4 +1,5 @@
-use js_sys::Math::random;
+pub mod dashboard;
+
 use leptos::*;
 
 #[component]
@@ -47,7 +48,7 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
 #[component]
 pub fn ClickToEdit<Cb>(value: String, onset: Cb) -> impl IntoView
 where
-    Cb: 'static + Copy + Fn(String),
+    Cb: 'static + Fn(String),
 {
     let edit = create_rw_signal(false);
     let cur_val = create_rw_signal(value.clone());
