@@ -1,6 +1,5 @@
 use leptos::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 pub trait Media: Clone + IntoView {
     fn url(&self) -> String;

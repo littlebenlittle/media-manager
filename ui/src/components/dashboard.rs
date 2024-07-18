@@ -1,8 +1,7 @@
 use leptos::*;
 use leptos_router::*;
-use std::{cmp::Ordering, collections::HashMap, hash::Hash};
 
-use crate::{components::ClickToEdit, data::Media, log};
+use crate::{components::ClickToEdit, data::Media};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
