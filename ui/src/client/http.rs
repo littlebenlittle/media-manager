@@ -1,30 +1,30 @@
-use crate::{data::Videos, log};
+use crate::{
+    data::{Image, Video},
+    log,
+};
 
 #[inline]
 fn origin() -> String {
-    web_sys::window()
-        .expect("window")
-        .location()
-        .origin()
-        .expect("window.location.origin")
-    // vv DEV vv
-    // let location = web_sys::window().expect("window").location();
-    // let protocol = location.protocol().expect("window.location.protocol");
-    // let hostname = location.hostname().expect("window.location.hostname");
-    // let base_url = protocol + "//" + &hostname + ":8090";
-    // base_url
-    // ^^ DEV ^^
+    if let Some(url) = option_env!("API_BASE_URL") {
+        return url.to_owned();
+    } else {
+        web_sys::window()
+            .expect("window")
+            .location()
+            .origin()
+            .expect("window.location.origin")
+    }
 }
 
-pub async fn get_videos() -> Videos {
-    let response = gloo_net::http::Request::get(&format!("{}/api/media", origin()))
+pub async fn get_videos() -> Vec<Video> {
+    let response = gloo_net::http::Request::get(&format!("{}/api/videos", origin()))
         .send()
         .await;
     if response.is_err() {
         // browser already logs the error details
         return Default::default();
     }
-    match response.unwrap().json::<Videos>().await {
+    match response.unwrap().json::<_>().await {
         Ok(v) => v,
         Err(e) => {
             log!("{}", e);
@@ -33,8 +33,36 @@ pub async fn get_videos() -> Videos {
     }
 }
 
-pub async fn update_video(id: String, field: &str, value: &str) {
-    if gloo_net::http::Request::put(&format!("{}/api/media/{}", origin(), id))
+pub async fn update_video(id: String, field: String, value: String) {
+    if gloo_net::http::Request::put(&format!("{}/api/videos/{}", origin(), id))
+        .query([("f", field), ("v", value)])
+        .send()
+        .await
+        .is_err()
+    {
+        // browser already logs errors
+    };
+}
+
+pub async fn get_images() -> Vec<Image> {
+    let response = gloo_net::http::Request::get(&format!("{}/api/images", origin()))
+        .send()
+        .await;
+    if response.is_err() {
+        // browser already logs the error details
+        return Default::default();
+    }
+    match response.unwrap().json::<_>().await {
+        Ok(v) => v,
+        Err(e) => {
+            log!("{}", e);
+            Default::default()
+        }
+    }
+}
+
+pub async fn update_image(id: String, field: String, value: String) {
+    if gloo_net::http::Request::put(&format!("{}/api/images/{}", origin(), id))
         .query([("f", field), ("v", value)])
         .send()
         .await

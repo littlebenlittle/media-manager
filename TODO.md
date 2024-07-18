@@ -28,6 +28,7 @@
 - [x] Split resumable uploads into a separate crate
 - [ ] API should return schema-appropriate media URLs
     - [ ] Use env var in API to set scheme
+- [ ] fix `/` going to catch-all route
 
 ## Greenfield
 
