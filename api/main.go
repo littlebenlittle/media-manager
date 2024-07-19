@@ -7,29 +7,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func coll(store Store) func(*gin.Context) {
-	return func(c *gin.Context) {
-		name := c.Param("coll")
-		if coll, ok, err := store.Coll(name); ok {
-			c.Set("coll", coll)
-		} else if err == nil {
-			c.AbortWithStatus(http.StatusNotFound)
-		} else {
-			c.Error(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
-		}
-	}
+type Collection interface {
+	List() ([]Item, error)
+	Create(string, map[string]string) (string, error)
+	Get(id string) (Item, bool, error)
+	Update(id string, field string, value string) (bool, error)
+}
+
+type Item struct {
+	ID  string
+	Url string
+	// If Meta contains a field "id", it will
+	// be overwritten in responses to clients
+	Meta map[string]string
 }
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	store := NewMemStore()
 	router := gin.Default()
+	add_collection(router, "videos")
+	add_collection(router, "images")
+	log.Fatal(router.Run())
+}
 
-	collections := router.Group("/:coll", coll(store))
-	collections.GET("", func(c *gin.Context) {
-		coll := c.MustGet("coll").(Collection)
+func add_collection(router *gin.Engine, name string) {
+	coll := NewMemCollection()
+	group := router.Group(name)
+
+	group.GET("/", func(c *gin.Context) {
 		if items, err := coll.List(); err == nil {
 			res := make([]map[string]string, len(items))
 			for i, item := range items {
@@ -43,8 +49,24 @@ func main() {
 		}
 	})
 
-	collections.GET("/:id", func(c *gin.Context) {
-		coll := c.MustGet("coll").(Collection)
+	group.POST("/", func(c *gin.Context) {
+		var item struct {
+			Url  string
+			Meta map[string]string
+		}
+		if err := c.BindJSON(&item); err != nil {
+			c.String(http.StatusBadRequest, "invalid JSON: %s", err)
+		} else {
+			if id, err := coll.Create(item.Url, item.Meta); err == nil {
+				c.String(http.StatusAccepted, "%s", id)
+			} else {
+				c.Error(err)
+				c.Status(http.StatusInternalServerError)
+			}
+		}
+	})
+
+	group.GET("/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		if item, ok, err := coll.Get(id); ok {
 			c.Redirect(http.StatusTemporaryRedirect, item.Url)
@@ -56,8 +78,7 @@ func main() {
 		}
 	})
 
-	collections.PUT("/:id", func(c *gin.Context) {
-		coll := c.MustGet("coll").(Collection)
+	group.PATCH("/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		field := c.Query("f")
 		value := c.Query("v")
@@ -71,5 +92,4 @@ func main() {
 		}
 	})
 
-	log.Fatal(router.Run())
 }
