@@ -1,40 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Store interface{}
-
-type Collection struct{}
-
-func (coll *Collection) List() ([]Item, error)
-func (coll *Collection) Get(id string) (Item, bool, error)
-func (coll *Collection) Update(id string, field string, value string) (bool, error)
-
-type Item struct {
-	ID  string
-	Url string
-	// If Meta contains a field "id", it will
-	// be overwritten in responses to clients
-	Meta map[string]string
-}
-
-func coll(store Store) func(*gin.Context)
-
-func NewMemStore() MemStore
-
-type MemStore struct{}
-
-func logerr(err error) string {
-	id := fmt.Sprintf("%4x", rand.Int31())
-	log.Printf("(%s) %s", id, err)
-	return id
+func coll(store Store) func(*gin.Context) {
+	return func(c *gin.Context) {
+		name := c.Param("coll")
+		if coll, ok, err := store.Coll(name); ok {
+			c.Set("coll", coll)
+		} else if err == nil {
+			c.AbortWithStatus(http.StatusNotFound)
+		} else {
+			c.Error(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+		}
+	}
 }
 
 func main() {
@@ -54,7 +38,8 @@ func main() {
 			}
 			c.JSON(http.StatusOK, items)
 		} else {
-			c.String(http.StatusInternalServerError, "errid: %s", logerr(err))
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
 		}
 	})
 
@@ -66,7 +51,8 @@ func main() {
 		} else if err == nil {
 			c.Status(http.StatusNotFound)
 		} else {
-			c.String(http.StatusInternalServerError, "errid: %s", logerr(err))
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
 		}
 	})
 
@@ -80,7 +66,8 @@ func main() {
 		} else if err == nil {
 			c.Status(http.StatusNotFound)
 		} else {
-			c.String(http.StatusInternalServerError, "errid: %s", logerr(err))
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
 		}
 	})
 
