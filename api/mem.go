@@ -12,7 +12,7 @@ type MemCollection struct {
 }
 
 func NewMemCollection() *MemCollection {
-	return &MemCollection{}
+	return &MemCollection{items: make(map[string]Item)}
 }
 
 func (coll *MemCollection) Create(url string, meta map[string]string) (string, error) {
@@ -55,4 +55,11 @@ func (coll *MemCollection) Update(id string, field string, value string) (bool, 
 	} else {
 		return false, nil
 	}
+}
+
+func (coll *MemCollection) Drop(id string) error {
+	coll.mu.Lock()
+	defer coll.mu.Unlock()
+	delete(coll.items, id)
+	return nil
 }

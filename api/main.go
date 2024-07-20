@@ -22,6 +22,7 @@ type Collection interface {
 	Create(string, map[string]string) (string, error)
 	Get(id string) (Item, bool, error)
 	Update(id string, field string, value string) (bool, error)
+	Drop(id string) error
 }
 
 type Item struct {
@@ -38,6 +39,7 @@ func main() {
 		log.Fatalf("please set env var MEDIA_SERVER_URL")
 	}
 
+	path_to_id := make(map[string]string)
 	videos := NewMemCollection()
 	images := NewMemCollection()
 	index := func(p string) {
@@ -49,18 +51,36 @@ func main() {
 			"title":  title,
 			"format": format,
 		}
-		url := fmt.Sprintf("%s/%s", MEDIA_SERVER_URL, p[len("/data"):])
+		url := fmt.Sprintf("%s%s", MEDIA_SERVER_URL, p[len("/data"):])
+		var coll Collection
 		switch format {
 		case "mkv", "mp4", "ogg", "webm":
-			videos.Create(url, fields)
+			coll = videos
 		case "jpg", "jpeg", "png", "webp":
-			images.Create(url, fields)
+			coll = images
 		default:
 			log.Printf("unsupported format, skipping: %s", p)
+			return
 		}
+		id, err := coll.Create(url, fields)
+		if err != nil {
+			log.Print(err)
+		}
+		path_to_id[p] = id
 	}
 	walk("/data", index)
-	watch("/data", index)
+	watch("/data", func(ev fsnotify.Event) {
+		switch ev.Op {
+		case fsnotify.Create:
+			log.Printf("create %s", ev.Name)
+			index(ev.Name)
+		case fsnotify.Rename, fsnotify.Remove:
+			log.Printf("remove %s", ev.Name)
+			id := path_to_id[ev.Name]
+			videos.Drop(id)
+			images.Drop(id)
+		}
+	})
 
 	router := gin.Default()
 	add_collection(router, videos, "videos")
@@ -72,7 +92,7 @@ func main() {
 func add_collection(router *gin.Engine, coll Collection, name string) {
 	group := router.Group(name)
 
-	group.GET("/", func(c *gin.Context) {
+	group.GET("", func(c *gin.Context) {
 		if items, err := coll.List(); err == nil {
 			res := make([]map[string]string, len(items))
 			for i, item := range items {
@@ -86,7 +106,7 @@ func add_collection(router *gin.Engine, coll Collection, name string) {
 		}
 	})
 
-	group.POST("/", func(c *gin.Context) {
+	group.POST("", func(c *gin.Context) {
 		var item struct {
 			Url  string
 			Meta map[string]string
@@ -145,7 +165,7 @@ func walk(dir string, f func(string)) {
 	}
 }
 
-func watch(dir string, f func(string)) {
+func watch(dir string, f func(fsnotify.Event)) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -153,12 +173,7 @@ func watch(dir string, f func(string)) {
 	watcher.Add(dir)
 	go func() {
 		for {
-			ev := <-watcher.Events
-			switch ev.Op {
-			case fsnotify.Create:
-				log.Printf("file created: %s", ev.Name)
-				f(ev.Name)
-			}
+			f(<-watcher.Events)
 		}
 	}()
 }
@@ -177,7 +192,7 @@ func extract_title_format(p string) (string, string) {
 func ffprobe(p string) string {
 	cmd := exec.Command(
 		"ffprobe",
-		"-print_format=json",
+		"-print_format", "json",
 		"-show_format",
 		p,
 	)
