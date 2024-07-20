@@ -1,4 +1,4 @@
-Copyright Ben Little
+Copyright Ben Little, ben.little@benlittle.dev
 
 # Do No Harm License
 

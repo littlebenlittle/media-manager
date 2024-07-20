@@ -51,6 +51,7 @@ func (coll *MemCollection) Update(id string, field string, value string) (bool, 
 		case "format":
 			item.Format = value
 		}
+		coll.items[id] = item
 		return true, nil
 	} else {
 		return false, nil

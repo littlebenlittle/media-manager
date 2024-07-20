@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use std::collections::HashMap;
+
+use futures::{channel::mpsc::channel, SinkExt};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -52,11 +55,36 @@ pub(crate) fn path(p: &str) -> String {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
-    let update = create_action(|v: &(String, String, String)| {
+    let server_media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
+    let media = create_rw_signal(Vec::<RwSignal<MediaItem>>::new());
+    create_effect(move |_| {
+        if let Some(m) = server_media.get() {
+            media.set(m.into_iter().map(|item| create_rw_signal(item)).collect())
+        }
+    });
+    let update = create_action(move |v: &(String, String, String)| {
         let (id, field, value) = v.clone();
         async move {
-            client::update_media(id, field, value).await;
+            match client::update_media(id.clone(), field.clone(), value.clone()).await {
+                Ok(true) => Some((id, field, value)),
+                _ => None,
+            }
+        }
+    });
+    let update_value = update.value();
+    create_effect(move |_| {
+        if let Some((id, field, value)) = update_value.get().flatten() {
+            if let Some(item) = media
+                .get_untracked()
+                .into_iter()
+                .find(|item| item.get_untracked().id == id)
+            {
+                item.update(move |item| match field.as_str() {
+                    "title" => item.title = value,
+                    "format" => item.format = value,
+                    f => log!("unknown field: {}", f),
+                })
+            }
         }
     });
     provide_context(media);

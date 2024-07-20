@@ -13,9 +13,7 @@ where
 {
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
-    let params = use_params_map();
-    let id = move || params.with(|p| p.get("id").cloned());
-    let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
+    let media = use_context::<RwSignal<Vec<RwSignal<MediaItem>>>>().unwrap();
     view! {
         <Form method="GET" action="." class="search-form">
             <label>
@@ -23,56 +21,42 @@ where
                 <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
             </label>
         </Form>
-        <Transition fallback=|| {
-            view! { "Loading..." }
-        }>
+        <ul>
+            <For
+                each=move || {
+                    media
+                        .get()
+                        .into_iter()
+                        .filter(|m| filter(search(), &&m.get()))
+                        .collect::<Vec<_>>()
+                }
 
-            {media
-                .get()
-                .map(|items| {
+                key=|item| item.get().id
+                children=move |item| {
+                    let title = move || item.get().title;
                     view! {
-                        <ul>
-                            <For
-                                each=move || {
-                                    items
-                                        .clone()
-                                        .into_iter()
-                                        .filter(|m| filter(search(), m))
-                                        .collect::<Vec<_>>()
-                                }
+                        <a
+                            title=title
+                            href={
+                                let path = path.clone();
+                                move || crate::path(
+                                    &format!(
+                                        "{}/{}{}",
+                                        path,
+                                        item.get_untracked().id,
+                                        query().to_query_string(),
+                                    ),
+                                )
+                            }
+                        >
 
-                                key=|item| item.id.clone()
-                                children={
-                                    let path = path.clone();
-                                    move |item| {
-                                        view! {
-                                            <a
-                                                title=item.title.clone()
-                                                href={
-                                                    let id = item.id.clone();
-                                                    let path = path.clone();
-                                                    move || crate::path(
-                                                        &format!("{}/{}{}", path, id, query().to_query_string()),
-                                                    )
-                                                }
-                                            >
-
-                                                // TODO why is this class not reacing to changes in id?
-                                                <li class:selected={
-                                                    let iid = item.id.clone();
-                                                    move || Some(iid.clone()) == id()
-                                                }>{item.title.clone()}</li>
-                                            </a>
-                                        }
-                                    }
-                                }
-                            />
-
-                        </ul>
+                            <li>{title}</li>
+                        </a>
                     }
-                })}
+                }
+            />
 
-        </Transition>
+        </ul>
     }
 }
 
@@ -83,19 +67,19 @@ where
     R: Fn(MediaItem) -> IV + Copy + 'static,
     IV: IntoView,
 {
-    let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
+    // let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
+    let media = use_context::<RwSignal<Vec<RwSignal<MediaItem>>>>().unwrap();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
     let item = move || {
-        media
-            .get()
-            .map(|items| {
-                items
-                    .iter()
-                    .find(|item| item.id == id() && filter(item))
-                    .cloned()
-            })
-            .flatten()
+        media.get().iter().find_map(|item| {
+            let item = item.get_untracked();
+            if item.id == id() && filter(&&item) {
+                Some(item)
+            } else {
+                None
+            }
+        })
     };
     view! {
         <div class="view">
@@ -126,7 +110,9 @@ where
 fn DetailTable(item: MediaItem) -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let update = use_context::<Action<(String, String, String), ()>>().unwrap();
+    let update =
+        use_context::<Action<(String, String, String), Option<(String, String, String)>>>()
+            .unwrap();
     view! {
         <table>
             <tr>

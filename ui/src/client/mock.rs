@@ -36,7 +36,7 @@ pub async fn get_media() -> Vec<MediaItem> {
     return media.clone().unwrap();
 }
 
-pub async fn update_media(id: String, field: String, value: String) {
+pub async fn update_media(id: String, field: String, value: String) -> anyhow::Result<bool> {
     let mut media = MEDIA.lock().unwrap();
     if media.is_none() {
         *media = init_media()
@@ -51,4 +51,5 @@ pub async fn update_media(id: String, field: String, value: String) {
             }
         }
     }
+    Ok(true)
 }

@@ -1,7 +1,4 @@
-use crate::{
-    data::{Image, MediaItem, Video},
-    log,
-};
+use crate::{data::MediaItem, log};
 
 #[inline]
 fn origin() -> String {
@@ -33,13 +30,13 @@ pub async fn get_media() -> Vec<MediaItem> {
     }
 }
 
-pub async fn update_media(id: String, field: String, value: String) {
-    if gloo_net::http::Request::patch(&format!("{}/api/media/{}", origin(), id))
-        .query([("f", field), ("v", value)])
-        .send()
-        .await
-        .is_err()
-    {
-        // browser already logs errors
-    };
+pub async fn update_media(id: String, field: String, value: String) -> anyhow::Result<bool> {
+    Ok(
+        gloo_net::http::Request::patch(&format!("{}/api/media/{}", origin(), id))
+            .query([("f", field), ("v", value)])
+            .send()
+            .await?
+            .status()
+            != 200,
+    )
 }

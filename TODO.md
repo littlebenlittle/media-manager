@@ -7,9 +7,10 @@
 - [x] Better reactive design
     - [x] Select should preserve scroll
 - [x] Filter media in selector by query
-- [x] Media detial on hover
+- [x] Media detail on hover
 - [ ] Toaster notifications
     - [ ] new media
+- [ ] Uploads
     
 ### API
 
@@ -20,14 +21,15 @@
     - [ ] sqlite storage
     - [ ] garbage collection instead of deletion
 - [ ] Improve metadata automation
-    - [ ] `ffprobe` to mine metadata
+    - [x] `ffprobe` to mine metadata
     - [ ] Use collections for nested directories
+    - [x] Recurse directories for media discovery
     
 ## Maintenance
 
 - [x] Split resumable uploads into a separate crate
-- [ ] API should return schema-appropriate media URLs
-    - [ ] Use env var in API to set scheme
+- [x] API should return schema-appropriate media URLs
+    - [x] Use env var in API to set media server url
 - [ ] fix `/` going to catch-all route
 
 ## Greenfield
@@ -40,6 +42,7 @@
     - [ ] Resumable
 - [ ] Use object storage
 - [ ] Alternative protocols (ws,quic)
+- [ ] API tests
 
 ## PR
 

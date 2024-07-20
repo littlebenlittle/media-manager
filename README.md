@@ -23,7 +23,7 @@ I make absolutely NO WARRANTY that this software is safe to use or fit
 any purpose. Please see the [LICENSE](./LICENSE.md) for more detailed
 information regarding use and redistribution of the software.
 
-## Bulding and Running
+## Building and Running
 
 Everything is containerized, so `podman-compose up --build` should
 do the trick. I haven't tested it with `docker-compose`.
