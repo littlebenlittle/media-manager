@@ -1,11 +1,21 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path"
+	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 )
+
+var MEDIA_SERVER_URL = os.Getenv("MEDIA_SERVER_URL")
 
 type Collection interface {
 	List() ([]Item, error)
@@ -24,15 +34,42 @@ type Item struct {
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	if MEDIA_SERVER_URL == "" {
+		log.Fatalf("please set env var MEDIA_SERVER_URL")
+	}
+
+	videos := NewMemCollection()
+	images := NewMemCollection()
+	index := func(p string) {
+		title, format := extract_title_format(p)
+		if format == "unknown" {
+			format = ffprobe(p)
+		}
+		fields := map[string]string{
+			"title":  title,
+			"format": format,
+		}
+		url := fmt.Sprintf("%s/%s", MEDIA_SERVER_URL, p[len("/data"):])
+		switch format {
+		case "mkv", "mp4", "ogg", "webm":
+			videos.Create(url, fields)
+		case "jpg", "jpeg", "png", "webp":
+			images.Create(url, fields)
+		default:
+			log.Printf("unsupported format, skipping: %s", p)
+		}
+	}
+	walk("/data", index)
+	watch("/data", index)
 
 	router := gin.Default()
-	add_collection(router, "videos")
-	add_collection(router, "images")
+	add_collection(router, videos, "videos")
+	add_collection(router, images, "images")
+
 	log.Fatal(router.Run())
 }
 
-func add_collection(router *gin.Engine, name string) {
-	coll := NewMemCollection()
+func add_collection(router *gin.Engine, coll Collection, name string) {
 	group := router.Group(name)
 
 	group.GET("/", func(c *gin.Context) {
@@ -91,5 +128,76 @@ func add_collection(router *gin.Engine, name string) {
 			c.Status(http.StatusInternalServerError)
 		}
 	})
+}
 
+func walk(dir string, f func(string)) {
+	if entries, err := os.ReadDir(dir); err != nil {
+		log.Print(err)
+	} else {
+		for _, entry := range entries {
+			path := path.Join(dir, entry.Name())
+			t := entry.Type()
+			if t.IsDir() {
+				walk(path, f)
+			}
+			f(path)
+		}
+	}
+}
+
+func watch(dir string, f func(string)) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatal(err)
+	}
+	watcher.Add(dir)
+	go func() {
+		for {
+			ev := <-watcher.Events
+			switch ev.Op {
+			case fsnotify.Create:
+				log.Printf("file created: %s", ev.Name)
+				f(ev.Name)
+			}
+		}
+	}()
+}
+
+func extract_title_format(p string) (string, string) {
+	base := path.Base(p)
+	ext := path.Ext(p)
+	title := base[:len(ext)]
+	if ext == "" {
+		return title, "unknown"
+	} else {
+		return title, ext[1:]
+	}
+}
+
+func ffprobe(p string) string {
+	cmd := exec.Command(
+		"ffprobe",
+		"-print_format=json",
+		"-show_format",
+		p,
+	)
+	cmd.Stderr = log.Writer()
+	buf := new(bytes.Buffer)
+	cmd.Stdout = buf
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	var v struct {
+		Format struct {
+			FormatName string `json:"format_name"`
+		}
+	}
+	if err := json.Unmarshal(buf.Bytes(), &v); err != nil {
+		log.Fatal(err)
+	}
+	switch strings.Split(v.Format.FormatName, ",")[0] {
+	case "matroska":
+		return "mkv"
+	}
+	return "unknown"
 }
