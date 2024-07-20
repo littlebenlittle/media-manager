@@ -43,31 +43,3 @@ pub async fn update_media(id: String, field: String, value: String) {
         // browser already logs errors
     };
 }
-
-pub async fn get_images() -> Vec<Image> {
-    let response = gloo_net::http::Request::get(&format!("{}/api/images", origin()))
-        .send()
-        .await;
-    if response.is_err() {
-        // browser already logs the error details
-        return Default::default();
-    }
-    match response.unwrap().json::<Vec<MediaItem>>().await {
-        Ok(v) => v.into_iter().map(|v| Image(v)).collect(),
-        Err(e) => {
-            log!("{}", e);
-            Default::default()
-        }
-    }
-}
-
-pub async fn update_image(id: String, field: String, value: String) {
-    if gloo_net::http::Request::put(&format!("{}/api/images/{}", origin(), id))
-        .query([("f", field), ("v", value)])
-        .send()
-        .await
-        .is_err()
-    {
-        // browser already logs errors
-    };
-}

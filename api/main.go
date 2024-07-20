@@ -18,19 +18,17 @@ import (
 var MEDIA_SERVER_URL = os.Getenv("MEDIA_SERVER_URL")
 
 type Collection interface {
-	List() ([]Item, error)
-	Create(string, map[string]string) (string, error)
+	List() (map[string]Item, error)
+	Create(string, string, string) (string, error)
 	Get(id string) (Item, bool, error)
 	Update(id string, field string, value string) (bool, error)
 	Drop(id string) error
 }
 
 type Item struct {
-	ID  string
-	Url string
-	// If Meta contains a field "id", it will
-	// be overwritten in responses to clients
-	Meta map[string]string
+	Url    string
+	Title  string
+	Format string
 }
 
 func main() {
@@ -40,29 +38,14 @@ func main() {
 	}
 
 	path_to_id := make(map[string]string)
-	videos := NewMemCollection()
-	images := NewMemCollection()
+	media := NewMemCollection()
 	index := func(p string) {
 		title, format := extract_title_format(p)
 		if format == "unknown" {
-			format = ffprobe(p)
-		}
-		fields := map[string]string{
-			"title":  title,
-			"format": format,
+			title, format = ffprobe(p)
 		}
 		url := fmt.Sprintf("%s%s", MEDIA_SERVER_URL, p[len("/data"):])
-		var coll Collection
-		switch format {
-		case "mkv", "mp4", "ogg", "webm":
-			coll = videos
-		case "jpg", "jpeg", "png", "webp":
-			coll = images
-		default:
-			log.Printf("unsupported format, skipping: %s", p)
-			return
-		}
-		id, err := coll.Create(url, fields)
+		id, err := media.Create(url, title, format)
 		if err != nil {
 			log.Print(err)
 		}
@@ -77,14 +60,12 @@ func main() {
 		case fsnotify.Rename, fsnotify.Remove:
 			log.Printf("remove %s", ev.Name)
 			id := path_to_id[ev.Name]
-			videos.Drop(id)
-			images.Drop(id)
+			media.Drop(id)
 		}
 	})
 
 	router := gin.Default()
-	add_collection(router, videos, "videos")
-	add_collection(router, images, "images")
+	add_collection(router, media, "media")
 
 	log.Fatal(router.Run())
 }
@@ -95,11 +76,17 @@ func add_collection(router *gin.Engine, coll Collection, name string) {
 	group.GET("", func(c *gin.Context) {
 		if items, err := coll.List(); err == nil {
 			res := make([]map[string]string, len(items))
-			for i, item := range items {
-				res[i] = item.Meta
-				res[i]["id"] = item.ID
+			i := 0
+			for id, item := range items {
+				res[i] = map[string]string{
+					"id":     id,
+					"url":    item.Url,
+					"title":  item.Title,
+					"format": item.Format,
+				}
+				i++
 			}
-			c.JSON(http.StatusOK, items)
+			c.JSON(http.StatusOK, res)
 		} else {
 			c.Error(err)
 			c.Status(http.StatusInternalServerError)
@@ -107,14 +94,11 @@ func add_collection(router *gin.Engine, coll Collection, name string) {
 	})
 
 	group.POST("", func(c *gin.Context) {
-		var item struct {
-			Url  string
-			Meta map[string]string
-		}
+		var item Item
 		if err := c.BindJSON(&item); err != nil {
 			c.String(http.StatusBadRequest, "invalid JSON: %s", err)
 		} else {
-			if id, err := coll.Create(item.Url, item.Meta); err == nil {
+			if id, err := coll.Create(item.Url, item.Title, item.Format); err == nil {
 				c.String(http.StatusAccepted, "%s", id)
 			} else {
 				c.Error(err)
@@ -189,9 +173,10 @@ func extract_title_format(p string) (string, string) {
 	}
 }
 
-func ffprobe(p string) string {
+func ffprobe(p string) (string, string) {
 	cmd := exec.Command(
 		"ffprobe",
+		"-v", "quiet",
 		"-print_format", "json",
 		"-show_format",
 		p,
@@ -204,15 +189,23 @@ func ffprobe(p string) string {
 	}
 	var v struct {
 		Format struct {
+			FileName   string `json:"filename"`
 			FormatName string `json:"format_name"`
+			Tags       map[string]string
 		}
 	}
 	if err := json.Unmarshal(buf.Bytes(), &v); err != nil {
 		log.Fatal(err)
 	}
-	switch strings.Split(v.Format.FormatName, ",")[0] {
-	case "matroska":
-		return "mkv"
+	var title string
+	title, ok := v.Format.Tags["title"]
+	if !ok {
+		title = path.Base(v.Format.FileName)
 	}
-	return "unknown"
+	if strings.HasPrefix(v.Format.FormatName, "matroska") {
+		return title, "mkv"
+	} else if strings.HasPrefix(v.Format.FormatName, "mov,mp4") {
+		return title, "mp4"
+	}
+	return title, "unknown"
 }
