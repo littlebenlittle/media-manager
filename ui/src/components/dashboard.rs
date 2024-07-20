@@ -1,90 +1,105 @@
 use leptos::*;
 use leptos_router::*;
 
-use crate::{components::ClickToEdit, data::Media};
+use crate::{components::ClickToEdit, data::MediaItem};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
 
 #[component]
-pub fn Selector<T, F>(items: Resource<(), Vec<T>>, path: String, filter: F) -> impl IntoView
+pub fn Selector<F>(path: String, filter: F) -> impl IntoView
 where
-    T: Media + 'static,
-    F: Fn(String, &T) -> bool + Copy + 'static,
+    F: Fn(String, &MediaItem) -> bool + Copy + 'static,
 {
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").cloned());
+    let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
+    let items = move || {
+        media.with(|m| {
+            m.clone().map(|m| {
+                m.into_iter()
+                    .filter(|m| filter(search(), m))
+                    .collect::<Vec<_>>()
+            })
+        })
+    };
     view! {
         <Form method="GET" action="">
             <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
         </Form>
-        <Transition fallback=|| view! { <p>"Loading..."</p> }>
-            <ul>
+        <Transition fallback=|| {
+            view! { "Loading..." }
+        }>
 
-                {items()
-                    .map(|items| {
-                        view! {
+            {items()
+                .map(|items| {
+                    view! {
+                        <ul>
                             <For
-                                each=move || {
-                                    items.clone().into_iter().filter(move |t| filter(search(), t))
-                                }
-
-                                key=|item| item.key()
+                                each=move || items.clone()
+                                key=|item| item.id.clone()
                                 children={
                                     let path = path.clone();
                                     move |item| {
                                         view! {
                                             <a
-                                                title=item.title()
+                                                title=item.title.clone()
                                                 href={
-                                                    let key = item.key();
+                                                    let id = item.id.clone();
                                                     let path = path.clone();
                                                     move || crate::path(
-                                                        &format!("{}/{}{}", path, key, query().to_query_string()),
+                                                        &format!("{}/{}{}", path, id, query().to_query_string()),
                                                     )
                                                 }
                                             >
 
                                                 // TODO why is this class not reacing to changes in id?
                                                 <li class:selected={
-                                                    let key = item.key();
-                                                    move || Some(key.clone()) == id()
-                                                }>{item.title()}</li>
+                                                    let iid = item.id.clone();
+                                                    move || Some(iid.clone()) == id()
+                                                }>{item.title.clone()}</li>
                                             </a>
                                         }
                                     }
                                 }
                             />
-                        }
-                    })}
 
-            </ul>
+                        </ul>
+                    }
+                })}
+
         </Transition>
     }
 }
 
 #[component]
-pub fn Editor<T, UF, FF>(items: Resource<(), Vec<T>>, update: UF, fields: FF) -> impl IntoView
+pub fn Editor<F, R, IV>(filter: F, render: R) -> impl IntoView
 where
-    T: Media + 'static,
-    UF: Fn(&str, &str, &str) + Copy + 'static,
-    FF: Fn(&T) -> Vec<(String, String, bool)> + Copy + 'static,
+    F: Fn(&&MediaItem) -> bool + Copy + 'static,
+    R: Fn(MediaItem) -> IV + Copy + 'static,
+    IV: IntoView,
 {
+    let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
     let item = move || {
-        items
+        media
             .get()
-            .map(|items| items.iter().find(|item| item.key() == id()).cloned())
+            .map(|items| {
+                items
+                    .iter()
+                    .find(|item| item.id == id() && filter(item))
+                    .cloned()
+            })
             .flatten()
     };
     view! {
         <div class="view">
             <Transition fallback=|| {
                 view! { <p>"Loading Video"</p> }
-            }>{move || { item().map(|item| item.into_view()) }}</Transition>
+            }>{move || { item().map(move |item| render(item).into_view()) }}</Transition>
         </div>
         <Transition fallback=|| {
             view! { <p>"Loading Video"</p> }
@@ -94,7 +109,7 @@ where
                     .map(|item| {
                         view! {
                             <div class="detail">
-                                <DetailTable item=item update=update fields=fields/>
+                                <DetailTable item=item/>
                             </div>
                         }
                     })
@@ -106,77 +121,72 @@ where
 
 #[allow(unexpected_cfgs)]
 #[component]
-fn DetailTable<T, UF, FF>(item: T, update: UF, fields: FF) -> impl IntoView
-where
-    T: Media,
-    // get the fields of T: name, init value, editable (more? copyable? links?)
-    FF: Fn(&T) -> Vec<(String, String, bool)>,
-    UF: Fn(&str, &str, &str) + Copy + 'static,
-{
-    let fields = fields(&item);
+fn DetailTable(item: MediaItem) -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
+    let update = use_context::<Action<(String, String, String), ()>>().unwrap();
     view! {
-        <div class="media-url">
-            <a download=download_name(&item) href=item.url()>
-                <button>"Download"</button>
-            </a>
-
-            {
-                #[cfg(web_sys_unstable_apis)]
-                view! {
-                    <span>
-                        <CopyButton value=item.url()/>
-                    </span>
-                }
-            }
-
-            <span class="url-text" title=item.url()>
-                {item.url()}
-            </span>
-        </div>
         <table>
-            <For
-                each=move || fields.clone()
-                key=|(field, _, _)| field.clone()
-                children=move |(field, init_val, edit)| {
-                    view! {
-                        <tr>
-                            <td>{field.clone()}</td>
-                            <td>
-                                {if edit {
-                                    let field = field.clone();
-                                    view! {
-                                        <ClickToEdit
-                                            value=init_val
-                                            onset=move |value| update(&id(), &field, &value)
-                                        />
-                                    }
-                                        .into_view()
-                                } else {
-                                    view! { <span>{init_val}</span> }.into_view()
-                                }}
+            <tr>
+                <td>"title"</td>
+                <td>
 
-                            </td>
-                        </tr>
+                    {view! {
+                        <ClickToEdit
+                            value=item.title.clone()
+                            onset=move |value| update.dispatch((id(), "title".to_string(), value))
+                        />
                     }
-                }
-            />
+                        .into_view()}
+
+                </td>
+            </tr>
+            <tr>
+                <td>"format"</td>
+                <td>
+
+                    {view! {
+                        <ClickToEdit
+                            value=item.format.clone()
+                            onset=move |value| update.dispatch((id(), "format".to_string(), value))
+                        />
+                    }
+                        .into_view()}
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>"url"</td>
+                <td class="media-url">
+                    <a download=download_name(&item) href=item.url.clone()>
+                        <button>"Download"</button>
+                    </a>
+
+                    {
+                        #[cfg(web_sys_unstable_apis)]
+                        view! {
+                            <span>
+                                <CopyButton value=item.url.clone()/>
+                            </span>
+                        }
+                    }
+
+                    <span class="url-text" title=item.url.clone()>
+                        {item.url.clone()}
+                    </span>
+                </td>
+            </tr>
 
         </table>
     }
 }
 
-fn download_name<T>(item: &T) -> String
-where
-    T: Media,
-{
-    let title = item.title();
-    let format = item.format();
-    if let Some(pos) = title.rfind(".") {
-        if &title[pos..] == &format {
-            return title.clone();
+fn download_name(item: &MediaItem) -> String {
+    if let Some(pos) = item.title.rfind(".") {
+        if &item.title[pos..] == &item.format {
+            return item.title.clone();
         }
     }
-    format!("{}.{}", title, format)
+    format!("{}.{}", item.title, item.format)
 }

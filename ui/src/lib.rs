@@ -10,7 +10,7 @@ mod components;
 mod data;
 mod pages;
 
-use data::{Image, Video};
+use data::MediaItem;
 
 use components::dashboard::{Editor, Selector};
 
@@ -52,10 +52,15 @@ pub(crate) fn path(p: &str) -> String {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let videos = create_local_resource(|| (), |_| async { crate::client::get_videos().await });
-    let images = create_local_resource(|| (), |_| async { crate::client::get_images().await });
-    provide_context(videos);
-    provide_context(images);
+    let media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
+    let update = create_action(|v: &(String, String, String)| {
+        let (id, field, value) = v.clone();
+        async move {
+            client::update_media(id, field, value).await;
+        }
+    });
+    provide_context(media);
+    provide_context(update);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -95,15 +100,16 @@ pub fn App() -> impl IntoView {
                     <Route
                         path="videos"
                         view=|| {
-                            let videos = use_context::<Resource<(), Vec<Video>>>().unwrap();
                             view! {
                                 <div class="dashboard">
                                     <div class="selector">
                                         <Selector
                                             path="videos".to_string()
-                                            items=videos
-                                            filter=|search, video| video.title.contains(&search)
+                                            filter=|search, item| {
+                                                item.title.contains(&search) && video_filter(&item)
+                                            }
                                         />
+
                                     </div>
                                     <div class="editor">
                                         <Outlet/>
@@ -117,30 +123,15 @@ pub fn App() -> impl IntoView {
                         <Route
                             path=":id"
                             view=move || {
-                                let videos = use_context::<Resource<(), Vec<Video>>>().unwrap();
-                                let update_video = create_action(|v: &(String, String, String)| {
-                                    let (id, field, value) = v.clone();
-                                    async move {
-                                        client::update_video(id, field, value).await;
-                                    }
-                                });
                                 view! {
                                     <Editor
-                                        items=videos
-                                        update=move |id, field, value| {
-                                            update_video
-                                                .dispatch((
-                                                    id.to_string(),
-                                                    field.to_string(),
-                                                    value.to_string(),
-                                                ))
-                                        }
-
-                                        fields=|video| {
-                                            vec![
-                                                ("title".to_string(), video.title.clone(), true),
-                                                ("format".to_string(), video.format.clone(), true),
-                                            ]
+                                        filter=video_filter
+                                        render=|item| {
+                                            view! {
+                                                <video>
+                                                    <source src=item.url/>
+                                                </video>
+                                            }
                                         }
                                     />
                                 }
@@ -151,15 +142,16 @@ pub fn App() -> impl IntoView {
                     <Route
                         path="images"
                         view=|| {
-                            let images = use_context::<Resource<(), Vec<Image>>>().unwrap();
                             view! {
                                 <div class="dashboard">
                                     <div class="selector">
                                         <Selector
                                             path="images".to_string()
-                                            items=images
-                                            filter=|search, image| image.title.contains(&search)
+                                            filter=|search, item| {
+                                                item.title.contains(&search) && image_filter(&item)
+                                            }
                                         />
+
                                     </div>
                                     <div class="editor">
                                         <Outlet/>
@@ -173,30 +165,11 @@ pub fn App() -> impl IntoView {
                         <Route
                             path=":id"
                             view=move || {
-                                let images = use_context::<Resource<(), Vec<Image>>>().unwrap();
-                                let update_image = create_action(|v: &(String, String, String)| {
-                                    let (id, field, value) = v.clone();
-                                    async move {
-                                        client::update_image(id, field, value).await;
-                                    }
-                                });
                                 view! {
                                     <Editor
-                                        items=images
-                                        update=move |id, field, value| {
-                                            update_image
-                                                .dispatch((
-                                                    id.to_string(),
-                                                    field.to_string(),
-                                                    value.to_string(),
-                                                ))
-                                        }
-
-                                        fields=|image| {
-                                            vec![
-                                                ("title".to_string(), image.title.clone(), true),
-                                                ("format".to_string(), image.format.clone(), true),
-                                            ]
+                                        filter=image_filter
+                                        render=|item| {
+                                            view! { <img src=item.url/> }
                                         }
                                     />
                                 }
@@ -208,5 +181,19 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
+    }
+}
+
+fn video_filter(m: &&MediaItem) -> bool {
+    match m.format.as_str() {
+        "mp4" | "webm" | "mkv" | "ogg" => true,
+        _ => false,
+    }
+}
+
+fn image_filter(m: &&MediaItem) -> bool {
+    match m.format.as_str() {
+        "jpg" | "jpeg" | "png" | "webp" => true,
+        _ => false,
     }
 }

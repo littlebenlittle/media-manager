@@ -1,5 +1,5 @@
 use crate::{
-    data::{Image, Video},
+    data::{Image, MediaItem, Video},
     log,
 };
 
@@ -16,15 +16,15 @@ fn origin() -> String {
     }
 }
 
-pub async fn get_videos() -> Vec<Video> {
-    let response = gloo_net::http::Request::get(&format!("{}/api/videos", origin()))
+pub async fn get_media() -> Vec<MediaItem> {
+    let response = gloo_net::http::Request::get(&format!("{}/api/media", origin()))
         .send()
         .await;
     if response.is_err() {
         // browser already logs the error details
         return Default::default();
     }
-    match response.unwrap().json::<_>().await {
+    match response.unwrap().json::<Vec<MediaItem>>().await {
         Ok(v) => v,
         Err(e) => {
             log!("{}", e);
@@ -33,8 +33,8 @@ pub async fn get_videos() -> Vec<Video> {
     }
 }
 
-pub async fn update_video(id: String, field: String, value: String) {
-    if gloo_net::http::Request::put(&format!("{}/api/videos/{}", origin(), id))
+pub async fn update_media(id: String, field: String, value: String) {
+    if gloo_net::http::Request::patch(&format!("{}/api/media/{}", origin(), id))
         .query([("f", field), ("v", value)])
         .send()
         .await
@@ -52,8 +52,8 @@ pub async fn get_images() -> Vec<Image> {
         // browser already logs the error details
         return Default::default();
     }
-    match response.unwrap().json::<_>().await {
-        Ok(v) => v,
+    match response.unwrap().json::<Vec<MediaItem>>().await {
+        Ok(v) => v.into_iter().map(|v| Image(v)).collect(),
         Err(e) => {
             log!("{}", e);
             Default::default()
