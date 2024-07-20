@@ -65,21 +65,27 @@ where
 #[component]
 fn UploadForm() -> impl IntoView {
     let file_input = create_node_ref::<html::Input>();
-    let upload = create_action(|file: &gloo_file::File| {
+    let upload = create_action(|file: &web_sys::File| {
         let file = file.clone();
         async move { crate::client::upload_file(file).await }
     });
-    let on_submit = move |ev: leptos::ev::SubmitEvent| {
+    let files = create_rw_signal(Option::<web_sys::FileList>::None);
+    let onchange = move |e: ev::Event| {
+        let tgt = event_target::<web_sys::HtmlInputElement>(&e);
+        let file_list = tgt.files().unwrap();
+        files.set(Some(file_list.into()));
+    };
+    let onsubmit = move |ev: ev::SubmitEvent| {
         ev.prevent_default();
-        if let Some(files) = file_input().unwrap().files() {
-            for file in gloo_file::FileList::from(files).into_iter() {
-                upload.dispatch(file.clone())
+        if let Some(files) = files.get() {
+            for i in 0..files.length() {
+                upload.dispatch(files.get(i).unwrap().clone())
             }
         }
     };
     view! {
-        <form id="upload-form" on:submit=on_submit>
-            <input type="file"/>
+        <form id="upload-form" on:submit=onsubmit>
+            <input type="file" multiple on:change=onchange/>
             <input node_ref=file_input class="submit" type="submit" value="Upload"/>
         </form>
     }

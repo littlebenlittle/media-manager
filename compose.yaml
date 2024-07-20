@@ -1,7 +1,8 @@
 services:
   trunk:
     build: ./trunk
-    command: [ "trunk", "build", "--release" ]
+    # command: [ "trunk", "build", "--release" ]
+    command: [ "bash", "-c", "sleep infinity" ]
     working_dir: /ui
     environment:
     - CARGO_TARGET_DIR=/target
