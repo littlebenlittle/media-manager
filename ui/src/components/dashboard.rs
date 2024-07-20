@@ -1,7 +1,7 @@
 use leptos::*;
 use leptos_router::*;
 
-use crate::{components::ClickToEdit, data::MediaItem};
+use crate::{components::ClickToEdit, data::MediaItem, log};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
@@ -16,29 +16,31 @@ where
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").cloned());
     let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
-    let items = move || {
-        media.with(|m| {
-            m.clone().map(|m| {
-                m.into_iter()
-                    .filter(|m| filter(search(), m))
-                    .collect::<Vec<_>>()
-            })
-        })
-    };
     view! {
-        <Form method="GET" action="">
-            <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
+        <Form method="GET" action="." class="search-form">
+            <label>
+                "Search:"
+                <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
+            </label>
         </Form>
         <Transition fallback=|| {
             view! { "Loading..." }
         }>
 
-            {items()
+            {media
+                .get()
                 .map(|items| {
                     view! {
                         <ul>
                             <For
-                                each=move || items.clone()
+                                each=move || {
+                                    items
+                                        .clone()
+                                        .into_iter()
+                                        .filter(|m| filter(search(), m))
+                                        .collect::<Vec<_>>()
+                                }
+
                                 key=|item| item.id.clone()
                                 children={
                                     let path = path.clone();
@@ -158,22 +160,24 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
 
             <tr>
                 <td>"url"</td>
-                <td class="media-url">
-                    <a download=download_name(&item) href=item.url.clone()>
-                        <button>"Download"</button>
-                    </a>
+                <td>
+                    <span class="media-url">
+                        <a download=download_name(&item) href=item.url.clone()>
+                            <button>"Download"</button>
+                        </a>
 
-                    {
-                        #[cfg(web_sys_unstable_apis)]
-                        view! {
-                            <span>
-                                <CopyButton value=item.url.clone()/>
-                            </span>
+                        {
+                            #[cfg(web_sys_unstable_apis)]
+                            view! {
+                                <span>
+                                    <CopyButton value=item.url.clone()/>
+                                </span>
+                            }
                         }
-                    }
 
-                    <span class="url-text" title=item.url.clone()>
-                        {item.url.clone()}
+                        <span class="url-text" title=item.url.clone()>
+                            {item.url.clone()}
+                        </span>
                     </span>
                 </td>
             </tr>

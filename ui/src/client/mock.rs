@@ -1,21 +1,25 @@
 //! Generate fake data for faster debugging cycles.
 
-use crate::{
-    data::{Image, Video},
-    log,
-};
+use crate::{data::MediaItem, log};
 use std::sync::Mutex;
 
 lazy_static::lazy_static! {
-    static ref VIDEOS: Mutex<Option<Vec<Video>>> = Mutex::new(None);
-    static ref IMAGES: Mutex<Option<Vec<Image>>> = Mutex::new(None);
+    static ref MEDIA: Mutex<Option<Vec<MediaItem>>> = Mutex::new(None);
 }
 
-fn init_videos() -> Option<Vec<Video>> {
+fn init_media() -> Option<Vec<MediaItem>> {
     let mut m = Vec::new();
-    for i in 0..5 {
-        m.push(Video {
+    for i in 1..6 {
+        m.push(MediaItem {
             id: i.to_string(),
+            title: format!("Blah {}", i),
+            format: "webp".to_string(),
+            url: format!("https://www.gstatic.com/webp/gallery/{}.webp", i),
+        });
+    }
+    for i in 0..5 {
+        m.push(MediaItem {
+            id: (7 + i).to_string(),
             title: format!("Big Buck Bunny {}", i),
             format: "webm".to_string(),
             url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
@@ -24,59 +28,21 @@ fn init_videos() -> Option<Vec<Video>> {
     return Some(m);
 }
 
-pub async fn get_videos() -> Vec<Video> {
-    let mut videos = VIDEOS.lock().unwrap();
-    if videos.is_none() {
-        *videos = init_videos()
+pub async fn get_media() -> Vec<MediaItem> {
+    let mut media = MEDIA.lock().unwrap();
+    if media.is_none() {
+        *media = init_media()
     }
-    return videos.clone().unwrap();
+    return media.clone().unwrap();
 }
 
-pub async fn update_video(id: String, field: String, value: String) {
-    let mut videos = VIDEOS.lock().unwrap();
-    if videos.is_none() {
-        *videos = init_videos()
+pub async fn update_media(id: String, field: String, value: String) {
+    let mut media = MEDIA.lock().unwrap();
+    if media.is_none() {
+        *media = init_media()
     }
-    let v = videos.as_mut().unwrap();
+    let v = media.as_mut().unwrap();
     for item in v.iter_mut() {
-        if item.id == id {
-            match field.as_str() {
-                "title" => item.title = value.to_string(),
-                "format" => item.format = value.to_string(),
-                _ => log!("unknown field for Video: {}", field),
-            }
-        }
-    }
-}
-
-fn init_images() -> Option<Vec<Image>> {
-    let mut m = Vec::new();
-    for i in 1..6 {
-        m.push(Image {
-            id: i.to_string(),
-            title: format!("Blah {}", i),
-            format: "webp".to_string(),
-            url: format!("https://www.gstatic.com/webp/gallery/{}.webp", i),
-        });
-    }
-    return Some(m);
-}
-
-pub async fn get_images() -> Vec<Image> {
-    let mut images = IMAGES.lock().unwrap();
-    if images.is_none() {
-        *images = init_images()
-    }
-    return images.clone().unwrap();
-}
-
-pub async fn update_image(id: String, field: String, value: String) {
-    let mut images = IMAGES.lock().unwrap();
-    if images.is_none() {
-        *images = init_images()
-    }
-    let i = images.as_mut().unwrap();
-    for item in i.iter_mut() {
         if item.id == id {
             match field.as_str() {
                 "title" => item.title = value.to_string(),

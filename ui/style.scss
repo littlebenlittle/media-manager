@@ -121,10 +121,18 @@ nav ul {
 .selector {
   grid-area: selector;
 
-  input {
-    height: 2rem;
-    font-size: 1rem;
-    text-align: center;
+  form.search-form {
+    label {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    input {
+      font-size: 1rem;
+      text-align: center;
+      width: 175px;
+    }
   }
 
   ul {
@@ -257,13 +265,11 @@ button:hover {
   text-align: left;
   flex-shrink: 1;
   flex-grow: 0;
-    color: #a0a0a0;
+  color: #a0a0a0;
 
   .media-url {
     display: flex;
     gap: 1rem;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
 
     .url-text {
       overflow: hidden;

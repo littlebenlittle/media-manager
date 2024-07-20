@@ -67,7 +67,7 @@ pub fn App() -> impl IntoView {
         <Title text="Media Manager"/>
         <Meta charset="UTF-8"/>
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <Router base=option_env!("APP_BASE_PATH").unwrap_or_default()>
+        <Router>
             <div id="nav-container">
                 <nav>
                     <ul>
