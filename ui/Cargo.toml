@@ -17,7 +17,7 @@ console_error_panic_hook = "0.1"
 anyhow = "1.0.83"
 serde = "1.0.201"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
-gloo-net = { version = "0.5.0", features = ["websocket", "http", "eventsource"] }
+gloo-net = "0.5.0"
 futures = "0.3.30"
 serde_json = "1.0.117"
 wasm-bindgen-futures = "0.4.42"
@@ -27,6 +27,7 @@ sha2 = "0.10.8"
 uuid = { version = "1.8.0", features = [ "v4" ] }
 base64 = "0.22.1"
 lazy_static = { version = "1.5", optional = true }
+gloo-file = { version = "0.3.0", features = ["futures"] }
 
 [dependencies.leptos-use]
 version = "0.10.10"

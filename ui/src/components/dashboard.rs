@@ -57,6 +57,31 @@ where
             />
 
         </ul>
+
+        <UploadForm/>
+    }
+}
+
+#[component]
+fn UploadForm() -> impl IntoView {
+    let file_input = create_node_ref::<html::Input>();
+    let upload = create_action(|file: &gloo_file::File| {
+        let file = file.clone();
+        async move { crate::client::upload_file(file).await }
+    });
+    let on_submit = move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+        if let Some(files) = file_input().unwrap().files() {
+            for file in gloo_file::FileList::from(files).into_iter() {
+                upload.dispatch(file.clone())
+            }
+        }
+    };
+    view! {
+        <form id="upload-form" on:submit=on_submit>
+            <input type="file"/>
+            <input node_ref=file_input class="submit" type="submit" value="Upload"/>
+        </form>
     }
 }
 

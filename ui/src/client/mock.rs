@@ -53,3 +53,7 @@ pub async fn update_media(id: String, field: String, value: String) -> anyhow::R
     }
     Ok(true)
 }
+
+pub async fn upload_file(file: gloo_file::File) {
+    log!("File uploads not supported in demo mode!");
+}
