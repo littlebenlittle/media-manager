@@ -18,7 +18,7 @@ services:
   api:
     build:
       context: ./api
-      dockerfile: Containerfile.dev
+      dockerfile: Containerfile
     restart: always
     working_dir: /api
     environment:

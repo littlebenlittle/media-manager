@@ -10,7 +10,7 @@
 - [x] Media detail on hover
 - [ ] Toaster notifications
     - [ ] new media
-- [ ] Uploads
+- [x] Uploads
     
 ### API
 
@@ -22,7 +22,7 @@
     - [ ] garbage collection instead of deletion
 - [ ] Improve metadata automation
     - [x] `ffprobe` to mine metadata
-    - [ ] Use collections for nested directories
+    - ~~[ ] Use collections for nested directories~~
     - [x] Recurse directories for media discovery
     
 ## Maintenance
@@ -40,6 +40,7 @@
     - [ ] Confirmation for anything destructive
 - [ ] Upload manager
     - [ ] Resumable
+    - [ ] Upload progress bars
 - [ ] Use object storage
 - [ ] Alternative protocols (ws,quic)
 - [ ] API tests
