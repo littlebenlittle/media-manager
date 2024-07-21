@@ -15,13 +15,13 @@ where
     let search = move || query().get("q").cloned().unwrap_or_default();
     let media = use_context::<RwSignal<Vec<RwSignal<MediaItem>>>>().unwrap();
     view! {
-        <Form method="GET" action="." class="search-form">
+        <Form method="GET" action="." class="search">
             <label>
                 "Search:"
                 <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
             </label>
         </Form>
-        <ul>
+        <ul class="selector">
             <For
                 each=move || {
                     let mut media = media
@@ -59,7 +59,6 @@ where
             />
 
         </ul>
-
         <UploadForm/>
     }
 }
@@ -86,7 +85,7 @@ fn UploadForm() -> impl IntoView {
         }
     };
     view! {
-        <form id="upload-form" on:submit=onsubmit>
+        <form class="upload" on:submit=onsubmit>
             <input type="file" multiple on:change=onchange/>
             <input node_ref=file_input class="submit" type="submit" value="Upload"/>
         </form>

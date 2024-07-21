@@ -130,19 +130,15 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <div class="dashboard">
-                                    <div class="selector">
-                                        <Selector
-                                            path="videos".to_string()
-                                            filter=|search, item| {
-                                                item.title.to_lowercase().contains(&search.to_lowercase())
-                                                    && video_filter(&item)
-                                            }
-                                        />
+                                    <Selector
+                                        path="videos".to_string()
+                                        filter=|search, item| {
+                                            item.title.to_lowercase().contains(&search.to_lowercase())
+                                                && video_filter(&item)
+                                        }
+                                    />
 
-                                    </div>
-                                    <div class="editor">
-                                        <Outlet/>
-                                    </div>
+                                    <Outlet/>
                                 </div>
                             }
                         }
@@ -183,9 +179,7 @@ pub fn App() -> impl IntoView {
                                         />
 
                                     </div>
-                                    <div class="editor">
-                                        <Outlet/>
-                                    </div>
+                                    <Outlet/>
                                 </div>
                             }
                         }
