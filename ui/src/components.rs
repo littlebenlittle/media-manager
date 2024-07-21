@@ -1,3 +1,5 @@
+pub mod dashboard;
+
 use leptos::*;
 
 #[component]
@@ -46,50 +48,48 @@ pub fn SyncButton<T: 'static>(action: Action<(), T>, pending: ReadSignal<bool>) 
 #[component]
 pub fn ClickToEdit<Cb>(value: String, onset: Cb) -> impl IntoView
 where
-    Cb: 'static + Copy + Fn(String),
+    Cb: 'static + Fn(String),
 {
-    let (edit, set_edit) = create_signal(false);
-    let val = create_rw_signal(value.clone());
-    let last_val = create_rw_signal(value);
-    let node = create_node_ref::<html::Input>();
-    let _ = leptos_use::on_click_outside(node, move |_| {
-        if edit.get_untracked() {
-            set_edit(false);
-            onset(val.get_untracked())
-        }
-    });
+    let edit = create_rw_signal(false);
+    let cur_val = create_rw_signal(value.clone());
+    let commit_val = create_rw_signal(value);
+    let input_el = create_node_ref::<html::Input>();
+    let commit = move || {
+        let val = cur_val.get();
+        commit_val.set(val.clone());
+        edit.set(false);
+        onset(val);
+    };
+    let revert = move || {
+        edit.set(false);
+        cur_val.set(commit_val.get());
+    };
+    let focus = move || {
+        edit.set(true);
+        input_el.get().unwrap().select();
+    };
+    let _ = leptos_use::use_event_listener(input_el, leptos::ev::blur, move |_| revert());
     view! {
         <input
             class:hidden=move || !edit()
-            node_ref=node
+            node_ref=input_el
             type="text"
-            // value=val.get_untracked()
-            prop:value=move || val.get()
+            prop:value=move || commit_val.get()
             on:input=move |e| {
-                val.set(event_target_value(&e));
+                cur_val.set(event_target_value(&e));
             }
 
             on:keydown=move |e| {
                 if e.key() == "Enter" {
-                    set_edit(false);
-                    last_val.set(val.get_untracked());
-                    onset(val.get_untracked())
+                    commit();
                 } else if e.key() == "Escape" {
-                    set_edit(false);
-                    val.set(last_val.get_untracked());
+                    revert();
                 }
             }
         />
 
-        <span
-            class:hidden=move || edit()
-            on:click=move |_| {
-                set_edit(true);
-                node.get().unwrap().select();
-            }
-        >
-
-            {move || last_val.get()}
+        <span class:hidden=move || edit() on:click=move |_| focus()>
+            {move || commit_val.get()}
         </span>
     }
 }

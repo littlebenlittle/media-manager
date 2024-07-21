@@ -21,20 +21,21 @@ services:
       dockerfile: Containerfile
     restart: always
     working_dir: /api
+    environment:
+    - MEDIA_SERVER_URL=http://localhost:8080/media
     volumes:
-    - data:/data:rw
-    - metadata:/metadata:rw
+    - data:/data:ro
     - ./api:/api:rw
     - gopath:/go:rw
     - gocache:/root/.cache/go:rw
-  # tusd:
-  #   image: docker.io/tusproject/tusd:v1.9
-  #   command: -behind-proxy -upload-dir=/data -hooks-dir=/hooks
-  #   user: "0"
-  #   volumes:
-  #   - data:/complete:rw
-  #   - tusd-data:/data:rw
-  #   - ./tusd:/hooks:ro
+  tusd:
+    image: docker.io/tusproject/tusd:v1.9
+    command: -behind-proxy -upload-dir=/data -hooks-dir=/hooks
+    user: "0"
+    volumes:
+    - data:/complete:rw
+    - tusd-data:/data:rw
+    - ./tusd:/hooks:ro
   nginx:
     image: docker.io/library/nginx:latest
     ports:
@@ -45,7 +46,7 @@ services:
     - ./ui/dist:/www/data:ro
     depends_on:
     - api
-    # - tusd
+    - tusd
     # - transmission
 
 volumes:

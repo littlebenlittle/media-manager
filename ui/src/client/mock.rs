@@ -1,29 +1,34 @@
 //! Generate fake data for faster debugging cycles.
 
-use crate::{log, data::{Media, MediaItem}};
+use crate::{data::MediaItem, log};
 use std::sync::Mutex;
 
 lazy_static::lazy_static! {
-    static ref MEDIA: Mutex<Option<Media>> = Mutex::new(None);
+    static ref MEDIA: Mutex<Option<Vec<MediaItem>>> = Mutex::new(None);
 }
 
-fn init_media() -> Option<Media> {
-    let mut m = Media::new();
-    for i in 0..5 {
-        m.insert(
-                i.to_string(),
-                MediaItem {
-                    title: format!("Big Buck Bunny {}", i),
-                    format: "webm".to_string(),
-                    // shortname: format!("NASA {:02}", i),
-                    url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
-                },
-            );
+fn init_media() -> Option<Vec<MediaItem>> {
+    let mut m = Vec::new();
+    for i in 1..6 {
+        m.push(MediaItem {
+            id: i.to_string(),
+            title: format!("Blah {}", i),
+            format: "webp".to_string(),
+            url: format!("https://www.gstatic.com/webp/gallery/{}.webp", i),
+        });
     }
-    return Some(m)
+    for i in 0..5 {
+        m.push(MediaItem {
+            id: (7 + i).to_string(),
+            title: format!("Big Buck Bunny {}", i),
+            format: "webm".to_string(),
+            url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
+        });
+    }
+    return Some(m);
 }
 
-pub async fn get_media() -> Media {
+pub async fn get_media() -> Vec<MediaItem> {
     let mut media = MEDIA.lock().unwrap();
     if media.is_none() {
         *media = init_media()
@@ -31,19 +36,24 @@ pub async fn get_media() -> Media {
     return media.clone().unwrap();
 }
 
-pub async fn update_media(id: String, field: &str, value: &str) {
+pub async fn update_media(id: String, field: String, value: String) -> anyhow::Result<bool> {
     let mut media = MEDIA.lock().unwrap();
     if media.is_none() {
         *media = init_media()
     }
-    let m = media.as_mut().unwrap();
-    if let Some(item) = m.get_mut(&id) {
-        match field {
-            "title" => item.title = value.to_string(),
-            "format" => item.format = value.to_string(),
-            _ => log!("unknown field for MediaItem: {}", field),
+    let v = media.as_mut().unwrap();
+    for item in v.iter_mut() {
+        if item.id == id {
+            match field.as_str() {
+                "title" => item.title = value.to_string(),
+                "format" => item.format = value.to_string(),
+                _ => log!("unknown field for Video: {}", field),
+            }
         }
-    } else {
-        log!("no media item with id: {}", id)
     }
+    Ok(true)
+}
+
+pub async fn upload_file(file: gloo_file::File) {
+    log!("File uploads not supported in demo mode!");
 }

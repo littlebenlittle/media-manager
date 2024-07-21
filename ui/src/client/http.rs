@@ -1,22 +1,19 @@
-use crate::{data::Media, log};
+use crate::{data::MediaItem, log};
 
 #[inline]
 fn origin() -> String {
-    web_sys::window()
-        .expect("window")
-        .location()
-        .origin()
-        .expect("window.location.origin")
-    // vv DEV vv
-    // let location = web_sys::window().expect("window").location();
-    // let protocol = location.protocol().expect("window.location.protocol");
-    // let hostname = location.hostname().expect("window.location.hostname");
-    // let base_url = protocol + "//" + &hostname + ":8090";
-    // base_url
-    // ^^ DEV ^^
+    if let Some(url) = option_env!("API_BASE_URL") {
+        return url.to_owned();
+    } else {
+        web_sys::window()
+            .expect("window")
+            .location()
+            .origin()
+            .expect("window.location.origin")
+    }
 }
 
-pub async fn get_media() -> Media {
+pub async fn get_media() -> Vec<MediaItem> {
     let response = gloo_net::http::Request::get(&format!("{}/api/media", origin()))
         .send()
         .await;
@@ -24,7 +21,7 @@ pub async fn get_media() -> Media {
         // browser already logs the error details
         return Default::default();
     }
-    match response.unwrap().json::<Media>().await {
+    match response.unwrap().json::<Vec<MediaItem>>().await {
         Ok(v) => v,
         Err(e) => {
             log!("{}", e);
@@ -33,13 +30,37 @@ pub async fn get_media() -> Media {
     }
 }
 
-pub async fn update_media(id: String, field: &str, value: &str) {
-    if gloo_net::http::Request::put(&format!("{}/api/media/{}", origin(), id))
-        .query([("f", field), ("v", value)])
-        .send()
-        .await
-        .is_err()
+pub async fn update_media(id: String, field: String, value: String) -> anyhow::Result<bool> {
+    Ok(
+        gloo_net::http::Request::patch(&format!("{}/api/media/{}", origin(), id))
+            .query([("f", field), ("v", value)])
+            .send()
+            .await?
+            .status()
+            != 200,
+    )
+}
+
+pub async fn upload_file(file: web_sys::File) {
+    let (mut upload, loc) = match tus_web::new_upload(
+        &file,
+        &format!("{}/files", origin()),
+        8_000_000,
+        &[("filename", &file.name())],
+    )
+    .await
     {
-        // browser already logs errors
+        Ok(u) => u,
+        Err(e) => {
+            log!("{}", e);
+            return;
+        }
+    };
+    match tus_web::continue_upload(&mut upload, &loc).await {
+        Ok(()) => {}
+        Err(e) => {
+            log!("{}", e);
+            return;
+        }
     };
 }

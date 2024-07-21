@@ -107,10 +107,7 @@ nav ul {
   }
 }
 
-#media-dashboard {
-  // height: 70vh;
-  // width: 85vw;
-  // max-width: 1300px;
+.dashboard {
   display: grid;
   grid-template-columns: 256px 1fr 128px;
   grid-template-rows: 62vh 16vh;
@@ -121,29 +118,21 @@ nav ul {
   row-gap: 1rem;
 }
 
-#upload-form {
-  grid-area: upload;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1rem;
-
-  // border-width: 3px;
-  // border-radius: 8px;
-  // border-color: #91a7ff;
-
-  >* {
-    margin-bottom: 1rem;
-  }
-}
-
-#media-selector {
+.selector {
   grid-area: selector;
 
-  input {
-    height: 2rem;
-    font-size: 1rem;
-    text-align: center;
+  form.search-form {
+    label {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    input {
+      font-size: 1rem;
+      text-align: center;
+      width: 175px;
+    }
   }
 
   ul {
@@ -168,6 +157,7 @@ nav ul {
   }
 
   li.selected {
+    border-style: solid;
     border-color: #bbbbbb;
     border-width: 3px;
     padding: 13px;
@@ -200,25 +190,27 @@ nav ul {
   }
 }
 
-#media-editor {
+.editor {
   grid-area: editor;
   display: flex;
   flex-direction: column;
   max-width: 720px;
 
-  .video-ctr {
+  .view {
 
     width: 100%;
 
-    video {
-      width: 100%;
+    video,
+    img {
+      max-height: 100%;
+      max-width: 100%;
       flex-shrink: 0;
       flex-grow: 1;
       flex-basis: 0px;
     }
   }
 
-  #detail {
+  .detail {
     flex-shrink: 1;
     flex-grow: 0;
   }
@@ -240,17 +232,6 @@ button {
 
 button:hover {
   background-color: #555;
-}
-
-#detail td .media-url {
-  display: flex;
-  gap: 1rem;
-
-
-  .url-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 }
 
 #view {
@@ -282,19 +263,22 @@ button:hover {
   }
 }
 
-#detail {
+.detail {
   text-align: left;
-  margin-top: 2rem;
   flex-shrink: 1;
   flex-grow: 0;
+  color: #a0a0a0;
 
-  >* {
-    margin-bottom: 1rem;
-  }
+  .media-url {
+    display: flex;
+    gap: 1rem;
 
-  h3 {
-    font-size: larger;
-    padding-left: 1rem;
+    .url-text {
+      overflow: hidden;
+      text-wrap: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
   }
 
   table {
@@ -303,13 +287,8 @@ button:hover {
     width: 100%;
   }
 
-  tr:not(.editable) {
-    color: #a0a0a0;
-  }
-
   td {
     border: 3px solid #3a3a3a;
-    text-align: left;
     text-wrap: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -317,6 +296,10 @@ button:hover {
 
     span {
       display: block;
+    }
+
+    input {
+      width: 100%;
     }
   }
 
@@ -370,71 +353,6 @@ button:hover {
   color: #91a7ff;
 }
 
-#media-convert-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 12px 1fr 12px 1fr;
-  grid-template-areas:
-    "format .      "
-    "format options"
-    "format .      "
-    "format submit ";
-  padding-bottom: 1rem;
-}
-
-#media-convert-format {
-  grid-area: format;
-  display: flex;
-  flex-direction: column;
-  width: fit-content;
-  justify-content: center;
-}
-
-#media-convert-format label {
-  width: fit-content;
-}
-
-#media-convert-options {
-  grid-area: options;
-  width: fit-content;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-#media-convert-options>* {
-  width: fit-content;
-}
-
-#media-convert-submit {
-  grid-area: submit;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-#convert-form-format {
-  display: grid;
-  margin-bottom: 1rem;
-  width: fit-content;
-}
-
-#convert-form-submit {
-  margin-top: 8px;
-}
-
-#media-manager-description {
-  text-align: left;
-}
-
-#media-manager-description>* {
-  margin-bottom: 1rem;
-}
-
-#select-media-source-notice {
-  margin: 1rem;
-}
-
 #jobs-list {
   padding: 0;
 
@@ -479,6 +397,9 @@ button:hover {
 }
 
 .content {
+  display: block;
+  text-align: left;
+
   a {
     color: #7cf;
     text-decoration: underline;
@@ -486,5 +407,27 @@ button:hover {
 
   a:hover {
     color: #5ad;
+  }
+}
+
+#upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .submit {
+    font-weight: bold;
+    border-style: solid;
+    border-radius: 8px;
+    height: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    background-color: #bbb;
+    color: #353550;
+    width: fit-content;
+    align-self: end;
+  }
+  .submit:hover {
+    background-color: #999;
   }
 }

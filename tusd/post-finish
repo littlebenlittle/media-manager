@@ -1,6 +1,8 @@
 #!/bin/sh
 
 exec 1>&2
-path=$(jq -r '.Upload.Storage.Path' </dev/stdin)
-mv "$path" /complete/
-rm "$path.info"
+json=$(jq '.' </dev/stdin)
+path=$(echo "$json" | jq -r '.Upload.Storage.Path')
+filename=$(echo "$json" | jq -r '.Upload.MetaData.filename')
+dest="/complete/$filename"
+mv "$path" "$dest"

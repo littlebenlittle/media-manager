@@ -1,274 +1,211 @@
 package main
 
 import (
-	"io"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
-	"time"
+	"os"
+	"os/exec"
+	"path"
+	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 )
 
+var MEDIA_SERVER_URL = os.Getenv("MEDIA_SERVER_URL")
+
+type Collection interface {
+	List() (map[string]Item, error)
+	Create(string, string, string) (string, error)
+	Get(id string) (Item, bool, error)
+	Update(id string, field string, value string) (bool, error)
+	Drop(id string) error
+}
+
+type Item struct {
+	Url    string
+	Title  string
+	Format string
+}
+
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-
-	m, err := NewManager()
-	if err != nil {
-		log.Fatalf("failed to initialize manager: %s", err)
+	if MEDIA_SERVER_URL == "" {
+		log.Fatalf("please set env var MEDIA_SERVER_URL")
 	}
 
-	dir := "/data"
-	if err := m.SyncFS(dir); err != nil {
-		log.Panicf("could not sync manager with fs: %s", err)
+	path_to_id := make(map[string]string)
+	media := NewMemCollection()
+	index := func(p string) {
+		title, format := extract_title_format(p)
+		if format == "unknown" {
+			title, format = ffprobe(p)
+		}
+		url := fmt.Sprintf("%s%s", MEDIA_SERVER_URL, p[len("/data"):])
+		id, err := media.Create(url, title, format)
+		if err != nil {
+			log.Print(err)
+		}
+		path_to_id[p] = id
 	}
-	m.Watch(dir)
+	walk("/data", index)
+	watch("/data", func(ev fsnotify.Event) {
+		switch ev.Op {
+		case fsnotify.Create:
+			log.Printf("create %s", ev.Name)
+			index(ev.Name)
+		case fsnotify.Rename, fsnotify.Remove:
+			log.Printf("remove %s", ev.Name)
+			id := path_to_id[ev.Name]
+			media.Drop(id)
+		}
+	})
 
 	router := gin.Default()
-
-	router.GET("/media", origin, func(c *gin.Context) {
-		if media, err := m.Media.List(); err != nil {
-			log.Printf("could not list media: %s", err)
-			c.Status(http.StatusInternalServerError)
-		} else {
-			res := to_client_media_map(dir, c.MustGet("origin").(string), media)
-			c.JSON(http.StatusOK, res)
-		}
-	})
-
-	router.PUT("/media/:id", find_id(), find_media(m), func(c *gin.Context) {
-		id := c.MustGet("id").(ID)
-		media := c.MustGet("media").(Media)
-		field := c.Query("f")
-		value := c.Query("v")
-		switch field {
-		case "title":
-			media.Title = value
-		case "format":
-			media.Format = value
-		default:
-			c.String(http.StatusBadRequest, "invalid value for query param `f`")
-		}
-		m.Media.Assign(id, media)
-	})
-
-	router.GET("/events/media", sse_headers, func(c *gin.Context) {
-		events := m.Media.Subscribe()
-		defer m.Media.Unsubscribe(events)
-		c.Stream(func(_ io.Writer) bool {
-			select {
-			case event, ok := <-events:
-				if ok {
-					c.SSEvent("message", event)
-				}
-				return ok
-			case <-timeout(60 * time.Second):
-				c.SSEvent("keepalive", nil)
-				return true
-			}
-		})
-	})
-
-	router.POST("/sync/media", origin, func(c *gin.Context) {
-		var update map[string]map[string]string
-		if err := c.BindJSON(&update); err != nil {
-			c.String(http.StatusBadRequest, "%s", err)
-			return
-		}
-		var media map[ID]Media
-		if media, err = m.Media.List(); err != nil {
-			log.Printf("%s", err)
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-		missing := make(map[string]gin.H, 0)
-		for id, server_t := range media {
-			log.Printf("id: %s", id.String())
-			if client_t, ok := update[id.String()]; ok {
-				server_t.Merge(client_t)
-				m.Media.Assign(id, server_t)
-				delete(update, id.String())
-			} else {
-				origin := c.MustGet("origin").(string)
-				missing[id.String()] = to_client_media(dir, origin, server_t)
-			}
-		}
-		unknown := make([]string, 0)
-		for id := range update {
-			unknown = append(unknown, id)
-		}
-		c.JSON(http.StatusCreated, gin.H{
-			"unknown": unknown,
-			"missing": missing,
-		})
-	})
-
-	// router.GET("/jobs", func(c *gin.Context) {
-	// 	if media, err := m.Jobs.List(); err != nil {
-	// 		c.JSON(http.StatusOK, media)
-	// 	} else {
-	// 		log.Printf("could not list jobs: %s", err)
-	// 		c.Status(http.StatusInternalServerError)
-	// 	}
-	// })
-
-	// router.POST("/jobs", func(c *gin.Context) {
-	// 	var job Job
-	// 	if err := c.BindJSON(&job); err != nil {
-	// 		c.String(http.StatusBadRequest, "%s", err)
-	// 		return
-	// 	} else {
-	// 		if err := m.Jobs().Start(job); err != nil {
-	// 			c.Status(http.StatusInternalServerError)
-	// 		} else {
-	// 			c.Status(http.StatusOK)
-	// 		}
-	// 	}
-	// })
-
-	// router.GET("/jobs/subscribe", func(c *gin.Context) {
-	// 	jobs := m.Jobs().Subscribe()
-	// 	defer m.Jobs().Unsubscribe(jobs)
-	// 	c.Stream(func(_ io.Writer) bool {
-	// 		select {
-	// 		case job, ok := <-jobs:
-	// 			if ok {
-	// 				c.SSEvent("message", job)
-	// 			}
-	// 			return ok
-	// 		case <-timeout(60 * time.Second):
-	// 			c.SSEvent("keepalive", nil)
-	// 			return true
-	// 		}
-	// 	})
-	// })
-
-	// router.GET("/jobs/:id", func(c *gin.Context) {
-	// 	job, ok := m.Jobs().Get(c.Param("id"))
-	// 	if !ok {
-	// 		c.Status(http.StatusNotFound)
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusOK, job)
-	// })
-
-	// router.GET("/jobs/:id/logs", func(c *gin.Context) {
-	// 	job, ok := m.Jobs().Get(c.Param("id"))
-	// 	if !ok {
-	// 		c.Status(http.StatusNotFound)
-	// 		return
-	// 	}
-	// 	messages := job.Subscribe()
-	// 	defer job.Unsubscribe(messages)
-	// 	c.Stream(func(_ io.Writer) bool {
-	// 		select {
-	// 		case message, ok := <-messages:
-	// 			if ok {
-	// 				c.SSEvent("message", message)
-	// 			}
-	// 			return ok
-	// 		case <-timeout(60 * time.Second):
-	// 			c.SSEvent("keepalive", nil)
-	// 			return true
-	// 		}
-	// 	})
-	// })
+	add_collection(router, media, "media")
 
 	log.Fatal(router.Run())
 }
 
-func find_id() func(c *gin.Context) {
-	return func(c *gin.Context) {
-		id, err := NewIDFromString(c.Param("id"))
-		if err != nil {
-			c.String(http.StatusBadRequest, "%s", err)
-			return
-		}
-		c.Set("id", id)
-	}
-}
+func add_collection(router *gin.Engine, coll Collection, name string) {
+	group := router.Group(name)
 
-func find_media(m *Manager) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		id, _ := c.Get("id")
-		media, ok := m.Media.Get(id.(ID))
-		if !ok {
-			log.Printf("media not found: %s", id)
-			c.AbortWithStatus(http.StatusNotFound)
-			return
-		}
-		c.Set("media", media)
-	}
-}
-
-func sse_headers(c *gin.Context) {
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("Transfer-Encoding", "chunked")
-	c.Writer.Header().Set("X-Accel-Buffering", "no")
-}
-
-func timeout(d time.Duration) (t chan struct{}) {
-	t = make(chan struct{})
-	go func() {
-		time.Sleep(d)
-		t <- struct{}{}
-	}()
-	return
-}
-
-func map_id_to_string[T any](i map[ID]T) map[string]T {
-	r := make(map[string]T, len(i))
-	for id, t := range i {
-		r[id.String()] = t
-	}
-	return r
-}
-
-func map_string_to_id[T any](i map[string]T) (map[ID]T, error) {
-	r := make(map[ID]T, len(i))
-	for s, t := range i {
-		if id, err := NewIDFromString(s); err != nil {
-			return nil, err
+	group.GET("", func(c *gin.Context) {
+		if items, err := coll.List(); err == nil {
+			res := make([]map[string]string, len(items))
+			i := 0
+			for id, item := range items {
+				res[i] = map[string]string{
+					"id":     id,
+					"url":    item.Url,
+					"title":  item.Title,
+					"format": item.Format,
+				}
+				i++
+			}
+			c.JSON(http.StatusOK, res)
 		} else {
-			r[id] = t
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
+		}
+	})
+
+	group.POST("", func(c *gin.Context) {
+		var item Item
+		if err := c.BindJSON(&item); err != nil {
+			c.String(http.StatusBadRequest, "invalid JSON: %s", err)
+		} else {
+			if id, err := coll.Create(item.Url, item.Title, item.Format); err == nil {
+				c.String(http.StatusAccepted, "%s", id)
+			} else {
+				c.Error(err)
+				c.Status(http.StatusInternalServerError)
+			}
+		}
+	})
+
+	group.GET("/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		if item, ok, err := coll.Get(id); ok {
+			c.Redirect(http.StatusTemporaryRedirect, item.Url)
+		} else if err == nil {
+			c.Status(http.StatusNotFound)
+		} else {
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
+		}
+	})
+
+	group.PATCH("/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		field := c.Query("f")
+		value := c.Query("v")
+		if ok, err := coll.Update(id, field, value); ok {
+			c.Status(http.StatusOK)
+		} else if err == nil {
+			c.Status(http.StatusNotFound)
+		} else {
+			c.Error(err)
+			c.Status(http.StatusInternalServerError)
+		}
+	})
+}
+
+func walk(dir string, f func(string)) {
+	if entries, err := os.ReadDir(dir); err != nil {
+		log.Print(err)
+	} else {
+		for _, entry := range entries {
+			path := path.Join(dir, entry.Name())
+			t := entry.Type()
+			if t.IsDir() {
+				walk(path, f)
+			}
+			f(path)
 		}
 	}
-	return r, nil
 }
 
-func to_client_media(dir string, origin string, media Media) gin.H {
-	path, err := filepath.Rel(dir, media.Path)
+func watch(dir string, f func(fsnotify.Event)) {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Panicf("%s", err)
+		log.Fatal(err)
 	}
-	return gin.H{
-		"title":     media.Title,
-		"format":    media.Format,
-		"shortname": media.Shortname,
-		"url":       origin + "/downloads/" + path,
+	watcher.Add(dir)
+	go func() {
+		for {
+			f(<-watcher.Events)
+		}
+	}()
+}
+
+func extract_title_format(p string) (string, string) {
+	base := path.Base(p)
+	ext := path.Ext(p)
+	title := base[:len(ext)]
+	if ext == "" {
+		return title, "unknown"
+	} else {
+		return title, ext[1:]
 	}
 }
 
-func to_client_media_map(dir string, origin string, media map[ID]Media) map[string]gin.H {
-	ret := make(map[string]gin.H, len(media))
-	for id, m := range media {
-		ret[id.String()] = to_client_media(dir, origin, m)
+func ffprobe(p string) (string, string) {
+	cmd := exec.Command(
+		"ffprobe",
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		p,
+	)
+	cmd.Stderr = log.Writer()
+	buf := new(bytes.Buffer)
+	cmd.Stdout = buf
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
 	}
-	return ret
-}
-
-type Location struct {
-	Scheme string
-	Host   string
-}
-
-func origin(c *gin.Context) {
-	host := c.Request.Host
-	scheme := c.Request.URL.Scheme
-	if scheme == "" {
-		scheme = "http"
+	var v struct {
+		Format struct {
+			FileName   string `json:"filename"`
+			FormatName string `json:"format_name"`
+			Tags       map[string]string
+		}
 	}
-	c.Set("origin", scheme+"://"+host)
+	if err := json.Unmarshal(buf.Bytes(), &v); err != nil {
+		log.Fatal(err)
+	}
+	var title string
+	title, ok := v.Format.Tags["title"]
+	if !ok {
+		title = path.Base(v.Format.FileName)
+	}
+	if strings.HasPrefix(v.Format.FormatName, "matroska") {
+		return title, "mkv"
+	} else if strings.HasPrefix(v.Format.FormatName, "mov,mp4") {
+		return title, "mp4"
+	}
+	return title, "unknown"
 }
