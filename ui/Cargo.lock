@@ -629,28 +629,8 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-sink",
- "gloo-utils 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gloo-utils",
  "http 0.2.12",
- "js-sys",
- "pin-project",
- "serde",
- "serde_json",
- "thiserror",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "gloo-net"
-version = "0.5.0"
-source = "git+https://github.com/rustwasm/gloo?branch=master#7efcfe45a2bf86aaf57d5d52ef03e9fddb6e869d"
-dependencies = [
- "futures-channel",
- "futures-core",
- "futures-sink",
- "gloo-utils 0.2.0 (git+https://github.com/rustwasm/gloo?branch=master)",
- "http 1.1.0",
  "js-sys",
  "pin-project",
  "serde",
@@ -678,18 +658,6 @@ name = "gloo-utils"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b5555354113b18c547c1d3a98fbf7fb32a9ff4f6fa112ce823a21641a0ba3aa"
-dependencies = [
- "js-sys",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "gloo-utils"
-version = "0.2.0"
-source = "git+https://github.com/rustwasm/gloo?branch=master#7efcfe45a2bf86aaf57d5d52ef03e9fddb6e869d"
 dependencies = [
  "js-sys",
  "serde",
@@ -972,7 +940,7 @@ dependencies = [
  "default-struct-builder",
  "futures-util",
  "gloo-timers",
- "gloo-utils 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gloo-utils",
  "js-sys",
  "lazy_static",
  "leptos",
@@ -1117,7 +1085,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66db10225f0caf60b0183935b288791ac3494ca6e1306d415ea97287b6c2db5"
 dependencies = [
  "cfg-if",
- "gloo-net 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gloo-net",
  "itertools",
  "js-sys",
  "lazy_static",
@@ -1896,7 +1864,7 @@ dependencies = [
  "const_format",
  "dashmap",
  "futures",
- "gloo-net 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gloo-net",
  "http 1.1.0",
  "js-sys",
  "once_cell",
@@ -2280,12 +2248,13 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tus_web"
 version = "0.1.0"
-source = "git+https://github.com/littlebenlittle/web_sys_resumable#391e7ecbc86ccac6998dfc8e58ff47493b35968e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290c6ed9d84dbf69364fa02145d3eacda54742135995951758cb2a8a704f77d4"
 dependencies = [
  "anyhow",
  "base64",
  "console_error_panic_hook",
- "gloo-net 0.5.0 (git+https://github.com/rustwasm/gloo?branch=master)",
+ "gloo-net",
  "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2329,7 +2298,7 @@ dependencies = [
  "console_log",
  "futures",
  "gloo-file",
- "gloo-net 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gloo-net",
  "gloo-timers",
  "js-sys",
  "lazy_static",
@@ -2569,7 +2538,8 @@ dependencies = [
 [[package]]
 name = "web_sys_resumable"
 version = "0.1.0"
-source = "git+https://github.com/littlebenlittle/web_sys_resumable#391e7ecbc86ccac6998dfc8e58ff47493b35968e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "074815ee79241cca8d4898dd874189be375d0b27b7bc3b53ae6e3c4c53c99981"
 dependencies = [
  "anyhow",
  "js-sys",

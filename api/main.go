@@ -165,7 +165,7 @@ func watch(dir string, f func(fsnotify.Event)) {
 func extract_title_format(p string) (string, string) {
 	base := path.Base(p)
 	ext := path.Ext(p)
-	title := base[:len(ext)]
+	title := base[:len(base)-len(ext)]
 	if ext == "" {
 		return title, "unknown"
 	} else {

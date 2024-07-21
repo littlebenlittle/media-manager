@@ -134,7 +134,8 @@ pub fn App() -> impl IntoView {
                                         <Selector
                                             path="videos".to_string()
                                             filter=|search, item| {
-                                                item.title.contains(&search) && video_filter(&item)
+                                                item.title.to_lowercase().contains(&search.to_lowercase())
+                                                    && video_filter(&item)
                                             }
                                         />
 
@@ -156,7 +157,7 @@ pub fn App() -> impl IntoView {
                                         filter=video_filter
                                         render=|item| {
                                             view! {
-                                                <video>
+                                                <video controls>
                                                     <source src=item.url/>
                                                 </video>
                                             }
@@ -176,7 +177,8 @@ pub fn App() -> impl IntoView {
                                         <Selector
                                             path="images".to_string()
                                             filter=|search, item| {
-                                                item.title.contains(&search) && image_filter(&item)
+                                                item.title.to_lowercase().contains(&search.to_lowercase())
+                                                    && image_filter(&item)
                                             }
                                         />
 

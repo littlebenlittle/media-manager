@@ -24,11 +24,13 @@ where
         <ul>
             <For
                 each=move || {
-                    media
+                    let mut media = media
                         .get()
                         .into_iter()
                         .filter(|m| filter(search(), &&m.get()))
-                        .collect::<Vec<_>>()
+                        .collect::<Vec<_>>();
+                    media.sort_by(|a, b| a.get_untracked().title.cmp(&b.get_untracked().title));
+                    media
                 }
 
                 key=|item| item.get().id
