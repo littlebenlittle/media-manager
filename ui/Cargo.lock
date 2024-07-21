@@ -2280,9 +2280,10 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tus_web"
 version = "0.1.0"
-source = "git+https://github.com/littlebenlittle/web_sys_resumable#06a4dea0e6e84a6b80adb57e5742b5783daf4f59"
+source = "git+https://github.com/littlebenlittle/web_sys_resumable#391e7ecbc86ccac6998dfc8e58ff47493b35968e"
 dependencies = [
  "anyhow",
+ "base64",
  "console_error_panic_hook",
  "gloo-net 0.5.0 (git+https://github.com/rustwasm/gloo?branch=master)",
  "js-sys",
@@ -2568,7 +2569,7 @@ dependencies = [
 [[package]]
 name = "web_sys_resumable"
 version = "0.1.0"
-source = "git+https://github.com/littlebenlittle/web_sys_resumable#06a4dea0e6e84a6b80adb57e5742b5783daf4f59"
+source = "git+https://github.com/littlebenlittle/web_sys_resumable#391e7ecbc86ccac6998dfc8e58ff47493b35968e"
 dependencies = [
  "anyhow",
  "js-sys",

@@ -42,14 +42,20 @@ pub async fn update_media(id: String, field: String, value: String) -> anyhow::R
 }
 
 pub async fn upload_file(file: web_sys::File) {
-    let (mut upload, loc) =
-        match tus_web::new_upload(&file, &format!("{}/files", origin()), 8_000_000).await {
-            Ok(u) => u,
-            Err(e) => {
-                log!("{}", e);
-                return;
-            }
-        };
+    let (mut upload, loc) = match tus_web::new_upload(
+        &file,
+        &format!("{}/files", origin()),
+        8_000_000,
+        &[("filename", &file.name())],
+    )
+    .await
+    {
+        Ok(u) => u,
+        Err(e) => {
+            log!("{}", e);
+            return;
+        }
+    };
     match tus_web::continue_upload(&mut upload, &loc).await {
         Ok(()) => {}
         Err(e) => {
