@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use futures::{channel::mpsc::channel, SinkExt};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -54,14 +53,23 @@ pub(crate) fn path(p: &str) -> String {
     }
 }
 
-fn gen_id() -> String {
-    uuid::Uuid::new_v4().to_string()
-}
-
 #[component]
 pub fn App() -> impl IntoView {
     let (media, set_media) = create_signal(HashMap::<String, MediaItem>::new());
-    let lookup_item = move |id: &str| media.with(|m| m.get(id).cloned());
+    let get_media_action = create_action(|_: &()| async move { client::get_media().await });
+    create_effect({
+        let val = get_media_action.value();
+        move |_| {
+            if let Some(items) = val.get() {
+                for item in items {
+                    set_media.update(|m| {
+                        m.insert(item.id.clone(), item);
+                    })
+                }
+            }
+        }
+    });
+    get_media_action.dispatch(());
     let update_item_action = create_action(|update: &MediaUpdate| {
         let u = update.clone();
         async move {
@@ -87,7 +95,7 @@ pub fn App() -> impl IntoView {
     let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
     create_effect(move |_| {
         if let Some(item) = new_media_source.get() {
-            let id = gen_id();
+            let id = item.id.clone();
             set_media.update(|m| {
                 m.insert(id.clone(), item.clone());
             });
@@ -95,7 +103,6 @@ pub fn App() -> impl IntoView {
         }
     });
     provide_context(update_item_action);
-    provide_context(lookup_item);
     provide_context(media);
     provide_meta_context();
     view! {
@@ -160,21 +167,18 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route path="" view=|| view! { <p>"No Video Selected"</p> }/>
+                        <Route path="" view=|| view! {}/>
                         <Route
                             path=":id"
                             view=move || {
                                 view! {
-                                    <Editor
-                                        filter=video_filter
-                                        render=|item| {
-                                            view! {
-                                                <video controls>
-                                                    <source src=item.url/>
-                                                </video>
-                                            }
+                                    <Editor render=|url| {
+                                        view! {
+                                            <video controls>
+                                                <source src=url/>
+                                            </video>
                                         }
-                                    />
+                                    }/>
                                 }
                             }
                         />
@@ -185,33 +189,28 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <div class="dashboard">
-                                    <div class="selector">
-                                        <Selector
-                                            path="images".to_string()
-                                            filter=|search, item| {
-                                                item.title.to_lowercase().contains(&search.to_lowercase())
-                                                    && item.kind() == "image"
-                                            }
-                                        />
+                                    <Selector
+                                        path="images".to_string()
+                                        filter=|search, item| {
+                                            item.title.to_lowercase().contains(&search.to_lowercase())
+                                                && item.kind() == "image"
+                                        }
+                                    />
 
-                                    </div>
                                     <Outlet/>
                                 </div>
                             }
                         }
                     >
 
-                        <Route path="" view=|| view! { <p>"No Image Selected"</p> }/>
+                        <Route path="" view=|| view! {}/>
                         <Route
                             path=":id"
                             view=move || {
                                 view! {
-                                    <Editor
-                                        filter=image_filter
-                                        render=|item| {
-                                            view! { <img src=item.url/> }
-                                        }
-                                    />
+                                    <Editor render=|url| {
+                                        view! { <img src=url/> }
+                                    }/>
                                 }
                             }
                         />

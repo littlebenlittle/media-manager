@@ -89,46 +89,37 @@ fn UploadForm() -> impl IntoView {
 }
 
 #[component]
-pub fn Editor<F, R, IV>(filter: F, render: R) -> impl IntoView
+pub fn Editor<R, IV>(render: R) -> impl IntoView
 where
-    F: Fn(&&MediaItem) -> bool + Copy + 'static,
-    R: Fn(MediaItem) -> IV + Copy + 'static,
+    R: Fn(String) -> IV + Copy + 'static,
     IV: IntoView,
 {
-    // let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
     let media = use_context::<ReadSignal<HashMap<String, MediaItem>>>().unwrap();
     let params = use_params_map();
-    let id = move || params.with(|p| p.get("id").unwrap().clone());
     let item = move || {
-        media.get().iter().find_map(|(iid, item)| {
-            if *iid == id() && filter(&&item) {
-                Some(item.clone())
-            } else {
-                None
-            }
-        })
+        let id = params.with(|p| p.get("id").unwrap().clone());
+        media.with(|m| m.get(&id).cloned())
     };
+    let url = create_memo(move |_| item().map(|i| i.url));
     view! {
         <div class="view">
             <Transition fallback=|| {
                 view! { <p>"Loading Video"</p> }
-            }>{move || { item().map(move |item| render(item).into_view()) }}</Transition>
+            }>{move || { url().map(move |url| render(url).into_view()) }}</Transition>
         </div>
-        <Transition fallback=|| {
-            view! { <p>"Loading Video"</p> }
-        }>
-            {move || {
-                item()
-                    .map(|item| {
-                        view! {
-                            <div class="detail">
-                                <DetailTable item=item/>
-                            </div>
-                        }
-                    })
-            }}
+        <div class="detail">
+            <Transition fallback=|| {
+                view! { <p>"Loading Video"</p> }
+            }>
+                {move || {
+                    item()
+                        .map(|item| {
+                            view! { <DetailTable item=item/> }
+                        })
+                }}
 
-        </Transition>
+            </Transition>
+        </div>
     }
 }
 

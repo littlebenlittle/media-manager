@@ -18,9 +18,11 @@ fn init_media() -> Option<Vec<MediaItem>> {
         });
     }
     for i in 0..5 {
+        let id = (7 + i).to_string();
+        let title = format!("Big Buck Bunny {}", id);
         m.push(MediaItem {
-            id: (7 + i).to_string(),
-            title: format!("Big Buck Bunny {}", i),
+            id,
+            title,
             format: "webm".to_string(),
             url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
         });
@@ -54,11 +56,10 @@ pub async fn update_media(id: String, field: String, value: String) -> anyhow::R
     Ok(true)
 }
 
-pub async fn upload_file(file: web_sys::File) {
+pub async fn upload_file(_file: web_sys::File) {
     log!("File uploads not supported in demo mode!");
 }
 
-use futures::StreamExt;
 use leptos::*;
 
 pub fn new_media() -> Signal<Option<MediaItem>> {
@@ -72,9 +73,11 @@ pub fn new_media() -> Signal<Option<MediaItem>> {
             items.unwrap()
         };
         if let Some(i) = items.next() {
+            let id = (12 + i).to_string();
+            let title = format!("Big Buck Bunny {}", id);
             set_data(Some(MediaItem {
-                id: (20 + i).to_string(),
-                title: format!("Big Buck Bunny {}", i),
+                id,
+                title,
                 format: "webm".to_string(),
                 url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
             }));
