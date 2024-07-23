@@ -95,6 +95,7 @@ pub fn App() -> impl IntoView {
     let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
     create_effect(move |_| {
         if let Some(item) = new_media_source.get() {
+            log!("new media A");
             let id = item.id.clone();
             set_media.update(|m| {
                 m.insert(id.clone(), item.clone());
@@ -118,10 +119,10 @@ pub fn App() -> impl IntoView {
                             <a href=path("")>"Home"</a>
                         </li>
                         <li>
-                            <a href=path("videos")>"Videos"</a>
+                            <a href=path("video")>"Videos"</a>
                         </li>
                         <li>
-                            <a href=path("images")>"Images"</a>
+                            <a href=path("image")>"Images"</a>
                         </li>
                     </ul>
                 </nav>
@@ -142,19 +143,24 @@ pub fn App() -> impl IntoView {
                     new_media
                         .get()
                         .map(|(id, item)| {
-                            view! { <a href=path(&format!("{}/{}", item.kind(), id))></a> }
+                            log!("new media B");
+                            view! {
+                                <a href=path(
+                                    &format!("{}/{}", item.kind(), id),
+                                )>"New Media! " {item.title}</a>
+                            }
                                 .into_view()
                         })
                 }/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
-                        path="videos"
+                        path="video"
                         view=|| {
                             view! {
                                 <div class="dashboard">
                                     <Selector
-                                        path="videos".to_string()
+                                        path="video".to_string()
                                         filter=|search, item| {
                                             item.title.to_lowercase().contains(&search.to_lowercase())
                                                 && item.kind() == "video"
@@ -185,12 +191,12 @@ pub fn App() -> impl IntoView {
 
                     </Route>
                     <Route
-                        path="images"
+                        path="image"
                         view=|| {
                             view! {
                                 <div class="dashboard">
                                     <Selector
-                                        path="images".to_string()
+                                        path="image".to_string()
                                         filter=|search, item| {
                                             item.title.to_lowercase().contains(&search.to_lowercase())
                                                 && item.kind() == "image"

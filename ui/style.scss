@@ -197,8 +197,8 @@ nav ul {
 
     video,
     img {
-      width: 100%;
       height: 100%;
+      max-width: 100%;
     }
   }
 
@@ -442,4 +442,7 @@ button:hover {
   border-radius: 8px;
   border-color: #9643ca;
   border-width: 1px;
+  border-bottom: none;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
 }
