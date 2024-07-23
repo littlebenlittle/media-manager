@@ -61,17 +61,8 @@ pub async fn upload_file(file: web_sys::File) {
 use futures::StreamExt;
 use leptos::*;
 
-pub fn media_update() -> Signal<Option<i32>> {
-    // let mut items = vec![];
-    // for i in 0..4 {
-    //     items.push(MediaItem {
-    //         id: (20 + i).to_string(),
-    //         title: format!("Big Buck Bunny {}", i),
-    //         format: "webm".to_string(),
-    //         url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
-    //     });
-    // }
-    let (data, set_data) = create_signal(None::<i32>);
+pub fn new_media() -> Signal<Option<MediaItem>> {
+    let (data, set_data) = create_signal(None::<MediaItem>);
     let interval = leptos_use::use_interval(10_000);
     create_effect(move |items| {
         (interval.counter).track();
@@ -80,10 +71,14 @@ pub fn media_update() -> Signal<Option<i32>> {
         } else {
             items.unwrap()
         };
-        let item = items.next();
-        log!("data: {:?}", item);
-        set_data(item);
-        if item.is_none() {
+        if let Some(i) = items.next() {
+            set_data(Some(MediaItem {
+                id: (20 + i).to_string(),
+                title: format!("Big Buck Bunny {}", i),
+                format: "webm".to_string(),
+                url: "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm".to_owned(),
+            }));
+        } else {
             (interval.pause)()
         }
         items

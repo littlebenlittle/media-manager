@@ -54,15 +54,49 @@ pub(crate) fn path(p: &str) -> String {
     }
 }
 
+fn gen_id() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
 #[component]
 pub fn App() -> impl IntoView {
-    let media = create_media();
-    let client_update = create_update_action(media);
-    let server_update = client::media_update();
-    let server_update =
-        move || server_update.with(|u| u.clone().map(|u| view! { <p>{u}</p> }.into_view()));
+    let (media, set_media) = create_signal(HashMap::<String, MediaItem>::new());
+    let lookup_item = move |id: &str| media.with(|m| m.get(id).cloned());
+    let update_item_action = create_action(|update: &MediaUpdate| {
+        let u = update.clone();
+        async move {
+            match client::update_media(u.id.clone(), u.field.clone(), u.value.clone()).await {
+                Ok(true) => Some(u),
+                _ => None,
+            }
+        }
+    });
+    create_effect({
+        let val = update_item_action.value();
+        move |_| {
+            if let Some(u) = val.get().flatten() {
+                set_media.update(|m| {
+                    if let Some(item) = m.get_mut(&u.id) {
+                        item.update(u.field, u.value)
+                    }
+                })
+            }
+        }
+    });
+    let new_media_source = client::new_media();
+    let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
+    create_effect(move |_| {
+        if let Some(item) = new_media_source.get() {
+            let id = gen_id();
+            set_media.update(|m| {
+                m.insert(id.clone(), item.clone());
+            });
+            set_new_media.set(Some((id, item)))
+        }
+    });
+    provide_context(update_item_action);
+    provide_context(lookup_item);
     provide_context(media);
-    provide_context(client_update);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -97,7 +131,14 @@ pub fn App() -> impl IntoView {
 
                     </div>
                 </div>
-                <Toaster message=server_update/>
+                <Toaster message=move || {
+                    new_media
+                        .get()
+                        .map(|(id, item)| {
+                            view! { <a href=path(&format!("{}/{}", item.kind(), id))></a> }
+                                .into_view()
+                        })
+                }/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
@@ -109,7 +150,7 @@ pub fn App() -> impl IntoView {
                                         path="videos".to_string()
                                         filter=|search, item| {
                                             item.title.to_lowercase().contains(&search.to_lowercase())
-                                                && video_filter(&item)
+                                                && item.kind() == "video"
                                         }
                                     />
 
@@ -149,7 +190,7 @@ pub fn App() -> impl IntoView {
                                             path="images".to_string()
                                             filter=|search, item| {
                                                 item.title.to_lowercase().contains(&search.to_lowercase())
-                                                    && image_filter(&item)
+                                                    && item.kind() == "image"
                                             }
                                         />
 

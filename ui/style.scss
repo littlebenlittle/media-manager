@@ -432,3 +432,14 @@ button:hover {
     color: #5ad;
   }
 }
+
+#notification-tray {
+  position: absolute;
+  bottom: 0;
+  right: 2rem;
+  width: 16rem;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #9643ca;
+  border-width: 1px;
+}

@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use leptos::*;
 use leptos_router::*;
 
-use crate::{components::ClickToEdit, data::MediaItem, log};
+use crate::{components::ClickToEdit, data::MediaItem, log, MediaUpdate};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
@@ -13,7 +15,7 @@ where
 {
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
-    let media = use_context::<RwSignal<Vec<RwSignal<MediaItem>>>>().unwrap();
+    let media = use_context::<ReadSignal<HashMap<String, MediaItem>>>().unwrap();
     view! {
         <Form method="GET" action="." class="search">
             <label>
@@ -27,32 +29,26 @@ where
                     let mut media = media
                         .get()
                         .into_iter()
-                        .filter(|m| filter(search(), &&m.get()))
+                        .filter(|(_, m)| filter(search(), &&m))
                         .collect::<Vec<_>>();
-                    media.sort_by(|a, b| a.get_untracked().title.cmp(&b.get_untracked().title));
+                    media.sort_by(|(_, a), (_, b)| a.title.cmp(&b.title));
                     media
                 }
 
-                key=|item| item.get().id
-                children=move |item| {
-                    let title = move || item.get().title;
+                key=|(id, _)| id.clone()
+                children=move |(id, item)| {
                     view! {
                         <a
-                            title=title
+                            title=item.title.clone()
                             href={
                                 let path = path.clone();
                                 move || crate::path(
-                                    &format!(
-                                        "{}/{}{}",
-                                        path,
-                                        item.get_untracked().id,
-                                        query().to_query_string(),
-                                    ),
+                                    &format!("{}/{}{}", path, id, query().to_query_string()),
                                 )
                             }
                         >
 
-                            <li>{title}</li>
+                            <li>{item.title}</li>
                         </a>
                     }
                 }
@@ -100,14 +96,13 @@ where
     IV: IntoView,
 {
     // let media = use_context::<Resource<(), Vec<MediaItem>>>().unwrap();
-    let media = use_context::<RwSignal<Vec<RwSignal<MediaItem>>>>().unwrap();
+    let media = use_context::<ReadSignal<HashMap<String, MediaItem>>>().unwrap();
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
     let item = move || {
-        media.get().iter().find_map(|item| {
-            let item = item.get_untracked();
-            if item.id == id() && filter(&&item) {
-                Some(item)
+        media.get().iter().find_map(|(iid, item)| {
+            if *iid == id() && filter(&&item) {
+                Some(item.clone())
             } else {
                 None
             }
@@ -142,9 +137,7 @@ where
 fn DetailTable(item: MediaItem) -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let update =
-        use_context::<Action<(String, String, String), Option<(String, String, String)>>>()
-            .unwrap();
+    let update = use_context::<Action<MediaUpdate, Option<MediaUpdate>>>().unwrap();
     view! {
         <table>
             <tr>
@@ -154,7 +147,14 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
                     {view! {
                         <ClickToEdit
                             value=item.title.clone()
-                            onset=move |value| update.dispatch((id(), "title".to_string(), value))
+                            onset=move |value| {
+                                update
+                                    .dispatch(MediaUpdate {
+                                        id: id(),
+                                        field: "title".to_string(),
+                                        value,
+                                    })
+                            }
                         />
                     }
                         .into_view()}
@@ -168,7 +168,14 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
                     {view! {
                         <ClickToEdit
                             value=item.format.clone()
-                            onset=move |value| update.dispatch((id(), "format".to_string(), value))
+                            onset=move |value| {
+                                update
+                                    .dispatch(MediaUpdate {
+                                        id: id(),
+                                        field: "format".to_string(),
+                                        value,
+                                    })
+                            }
                         />
                     }
                         .into_view()}
