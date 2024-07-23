@@ -16,6 +16,7 @@ mod pages;
 use data::MediaItem;
 
 use components::dashboard::{Editor, Selector};
+use components::toaster::Toaster;
 
 #[macro_export]
 macro_rules! log {
@@ -55,40 +56,13 @@ pub(crate) fn path(p: &str) -> String {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let server_media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
-    let media = create_rw_signal(Vec::<RwSignal<MediaItem>>::new());
-    create_effect(move |_| {
-        if let Some(m) = server_media.get() {
-            media.set(m.into_iter().map(|item| create_rw_signal(item)).collect())
-        }
-    });
-    let update = create_action(move |v: &(String, String, String)| {
-        let (id, field, value) = v.clone();
-        async move {
-            match client::update_media(id.clone(), field.clone(), value.clone()).await {
-                Ok(true) => Some((id, field, value)),
-                _ => None,
-            }
-        }
-    });
-    let update_value = update.value();
-    create_effect(move |_| {
-        if let Some((id, field, value)) = update_value.get().flatten() {
-            if let Some(item) = media
-                .get_untracked()
-                .into_iter()
-                .find(|item| item.get_untracked().id == id)
-            {
-                item.update(move |item| match field.as_str() {
-                    "title" => item.title = value,
-                    "format" => item.format = value,
-                    f => log!("unknown field: {}", f),
-                })
-            }
-        }
-    });
+    let media = create_media();
+    let client_update = create_update_action(media);
+    let server_update = client::media_update();
+    let server_update =
+        move || server_update.with(|u| u.clone().map(|u| view! { <p>{u}</p> }.into_view()));
     provide_context(media);
-    provide_context(update);
+    provide_context(client_update);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -123,6 +97,7 @@ pub fn App() -> impl IntoView {
 
                     </div>
                 </div>
+                <Toaster message=server_update/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
@@ -220,4 +195,53 @@ fn image_filter(m: &&MediaItem) -> bool {
         "jpg" | "jpeg" | "png" | "webp" => true,
         _ => false,
     }
+}
+
+#[derive(Clone)]
+struct MediaUpdate {
+    id: String,
+    field: String,
+    value: String,
+}
+
+fn create_update_action(
+    media: RwSignal<Vec<RwSignal<MediaItem>>>,
+) -> Action<MediaUpdate, Option<MediaUpdate>> {
+    let update = create_action(move |v: &MediaUpdate| {
+        let v = v.clone();
+        async move {
+            match client::update_media(v.id.clone(), v.field.clone(), v.value.clone()).await {
+                Ok(true) => Some(v),
+                _ => None,
+            }
+        }
+    });
+    let update_value = update.value();
+    create_effect(move |_| {
+        if let Some(v) = update_value.get().flatten() {
+            if let Some(item) = media
+                .get_untracked()
+                .into_iter()
+                .find(|item| item.get_untracked().id == v.id)
+            {
+                item.update(move |item| match v.field.as_str() {
+                    "title" => item.title = v.value,
+                    "format" => item.format = v.value,
+                    f => log!("unknown field: {}", f),
+                })
+            }
+        }
+    });
+    return update;
+}
+
+fn create_media() -> RwSignal<Vec<RwSignal<MediaItem>>> {
+    let media = create_rw_signal(Vec::<RwSignal<MediaItem>>::new());
+    let server_media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
+    create_effect(move |_| {
+        if let Some(m) = server_media.get() {
+            media.set(m.into_iter().map(|item| create_rw_signal(item)).collect())
+        }
+    });
+    return media;
 }

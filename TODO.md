@@ -11,7 +11,8 @@
 - [ ] Toaster notifications
     - [ ] new media
 - [x] Uploads
-    
+- [ ] hightlight new media items
+
 ### API
 
 - [ ] Persist storage on server

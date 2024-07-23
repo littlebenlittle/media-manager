@@ -1,4 +1,5 @@
 pub mod dashboard;
+pub mod toaster;
 
 use leptos::*;
 
