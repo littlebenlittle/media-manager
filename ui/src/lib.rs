@@ -12,10 +12,10 @@ mod components;
 mod data;
 mod pages;
 
-use data::MediaItem;
+use data::{MediaItem, MediaUpdate};
 
 use components::dashboard::{Editor, Selector};
-use components::toaster::Toaster;
+use components::notification_tray::NotificationTray;
 
 #[macro_export]
 macro_rules! log {
@@ -28,16 +28,6 @@ macro_rules! log {
             )
         )
     ));
-}
-
-#[macro_export]
-macro_rules! unwrap_js {
-    ($result:expr) => {
-        match $result {
-            Ok(v) => v,
-            Err(e) => anyhow::bail!(e.as_string().unwrap()),
-        }
-    };
 }
 
 /// Return the relative path from `APP_BASE_PATH`
@@ -95,7 +85,6 @@ pub fn App() -> impl IntoView {
     let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
     create_effect(move |_| {
         if let Some(item) = new_media_source.get() {
-            log!("new media A");
             let id = item.id.clone();
             set_media.update(|m| {
                 m.insert(id.clone(), item.clone());
@@ -139,11 +128,10 @@ pub fn App() -> impl IntoView {
 
                     </div>
                 </div>
-                <Toaster message=move || {
+                <NotificationTray message=move || {
                     new_media
                         .get()
                         .map(|(id, item)| {
-                            log!("new media B");
                             view! {
                                 <a href=path(
                                     &format!("{}/{}", item.kind(), id),
@@ -227,67 +215,4 @@ pub fn App() -> impl IntoView {
             </main>
         </Router>
     }
-}
-
-fn video_filter(m: &&MediaItem) -> bool {
-    match m.format.as_str() {
-        "mp4" | "webm" | "mkv" | "ogg" => true,
-        _ => false,
-    }
-}
-
-fn image_filter(m: &&MediaItem) -> bool {
-    match m.format.as_str() {
-        "jpg" | "jpeg" | "png" | "webp" => true,
-        _ => false,
-    }
-}
-
-#[derive(Clone)]
-struct MediaUpdate {
-    id: String,
-    field: String,
-    value: String,
-}
-
-fn create_update_action(
-    media: RwSignal<Vec<RwSignal<MediaItem>>>,
-) -> Action<MediaUpdate, Option<MediaUpdate>> {
-    let update = create_action(move |v: &MediaUpdate| {
-        let v = v.clone();
-        async move {
-            match client::update_media(v.id.clone(), v.field.clone(), v.value.clone()).await {
-                Ok(true) => Some(v),
-                _ => None,
-            }
-        }
-    });
-    let update_value = update.value();
-    create_effect(move |_| {
-        if let Some(v) = update_value.get().flatten() {
-            if let Some(item) = media
-                .get_untracked()
-                .into_iter()
-                .find(|item| item.get_untracked().id == v.id)
-            {
-                item.update(move |item| match v.field.as_str() {
-                    "title" => item.title = v.value,
-                    "format" => item.format = v.value,
-                    f => log!("unknown field: {}", f),
-                })
-            }
-        }
-    });
-    return update;
-}
-
-fn create_media() -> RwSignal<Vec<RwSignal<MediaItem>>> {
-    let media = create_rw_signal(Vec::<RwSignal<MediaItem>>::new());
-    let server_media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
-    create_effect(move |_| {
-        if let Some(m) = server_media.get() {
-            media.set(m.into_iter().map(|item| create_rw_signal(item)).collect())
-        }
-    });
-    return media;
 }

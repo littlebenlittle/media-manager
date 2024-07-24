@@ -434,6 +434,7 @@ button:hover {
 }
 
 #notification-tray {
+  z-index: 1;
   position: absolute;
   bottom: 0;
   right: 2rem;
