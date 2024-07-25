@@ -66,9 +66,10 @@ pub async fn upload_file(file: web_sys::File) {
     };
 }
 
-pub fn media_update() -> Signal<Option<MediaItem>> {
+pub fn new_media() -> Signal<Option<MediaItem>> {
     let event_source = leptos_use::use_event_source::<MediaItem, leptos_use::utils::JsonCodec>(
-        &format!("{}/sub/media", origin()),
+        &format!("{}/api/events/media", origin()),
     );
+    create_effect(move |_| log!("{:?}", event_source.data.get()));
     event_source.data
 }

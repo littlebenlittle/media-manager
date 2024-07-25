@@ -8,8 +8,8 @@
     - [x] Select should preserve scroll
 - [x] Filter media in selector by query
 - [x] Media detail on hover
-- [ ] Toaster notifications
-    - [ ] new media
+- [x] notifications
+    - [x] new media
 - [x] Uploads
 - [ ] hightlight new media items
 

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
@@ -31,6 +33,8 @@ type Item struct {
 	Format string
 }
 
+type Event struct{}
+
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	if MEDIA_SERVER_URL == "" {
@@ -39,7 +43,7 @@ func main() {
 
 	path_to_id := make(map[string]string)
 	media := NewMemCollection()
-	index := func(p string) {
+	index := func(p string) gin.H {
 		title, format := extract_title_format(p)
 		if format == "unknown" {
 			title, format = ffprobe(p)
@@ -48,24 +52,71 @@ func main() {
 		id, err := media.Create(url, title, format)
 		if err != nil {
 			log.Print(err)
+			return nil
 		}
 		path_to_id[p] = id
+		return gin.H{
+			"id":     id,
+			"title":  title,
+			"format": format,
+			"url":    url,
+		}
+
 	}
 	walk("/data", index)
+
+	clients := make(map[chan gin.H]struct{})
+	mu := sync.Mutex{}
 	watch("/data", func(ev fsnotify.Event) {
 		switch ev.Op {
 		case fsnotify.Create:
 			log.Printf("create %s", ev.Name)
-			index(ev.Name)
+			item := index(ev.Name)
+			mu.Lock()
+			log.Printf("clients: %d", len(clients))
+			for client := range clients {
+				client <- item
+			}
+			mu.Unlock()
 		case fsnotify.Rename, fsnotify.Remove:
 			log.Printf("remove %s", ev.Name)
 			id := path_to_id[ev.Name]
-			media.Drop(id)
+			if err := media.Drop(id); err != nil {
+				log.Print(err)
+			}
 		}
 	})
 
 	router := gin.Default()
 	add_collection(router, media, "media")
+
+	router.GET("/events/media", func(c *gin.Context) {
+		c.Writer.Header().Set("Content-Type", "text/event-stream")
+		c.Writer.Header().Set("Cache-Control", "no-cache")
+		c.Writer.Header().Set("Connection", "keep-alive")
+		c.Writer.Header().Set("Transfer-Encoding", "chunked")
+		ch := make(chan gin.H)
+		log.Printf("new client")
+		mu.Lock()
+		clients[ch] = struct{}{}
+		mu.Unlock()
+		defer func() {
+			log.Printf("closing client channel")
+			mu.Lock()
+			close(ch)
+			delete(clients, ch)
+			mu.Unlock()
+		}()
+		c.Stream(func(_ io.Writer) bool {
+			if event, ok := <-ch; ok {
+				log.Printf("sending event to client")
+				c.SSEvent("message", event)
+				log.Printf("event sent")
+				return true
+			}
+			return false
+		})
+	})
 
 	log.Fatal(router.Run())
 }
@@ -134,7 +185,7 @@ func add_collection(router *gin.Engine, coll Collection, name string) {
 	})
 }
 
-func walk(dir string, f func(string)) {
+func walk(dir string, f func(string) gin.H) {
 	if entries, err := os.ReadDir(dir); err != nil {
 		log.Print(err)
 	} else {
