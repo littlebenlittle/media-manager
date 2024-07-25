@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use futures::{channel::mpsc::channel, SinkExt};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -13,9 +12,10 @@ mod components;
 mod data;
 mod pages;
 
-use data::MediaItem;
+use data::{MediaItem, MediaUpdate};
 
 use components::dashboard::{Editor, Selector};
+use components::notification_tray::NotificationTray;
 
 #[macro_export]
 macro_rules! log {
@@ -28,16 +28,6 @@ macro_rules! log {
             )
         )
     ));
-}
-
-#[macro_export]
-macro_rules! unwrap_js {
-    ($result:expr) => {
-        match $result {
-            Ok(v) => v,
-            Err(e) => anyhow::bail!(e.as_string().unwrap()),
-        }
-    };
 }
 
 /// Return the relative path from `APP_BASE_PATH`
@@ -55,40 +45,55 @@ pub(crate) fn path(p: &str) -> String {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let server_media = create_local_resource(|| (), |_| async { crate::client::get_media().await });
-    let media = create_rw_signal(Vec::<RwSignal<MediaItem>>::new());
-    create_effect(move |_| {
-        if let Some(m) = server_media.get() {
-            media.set(m.into_iter().map(|item| create_rw_signal(item)).collect())
+    let (media, set_media) = create_signal(HashMap::<String, MediaItem>::new());
+    let get_media_action = create_action(|_: &()| async move { client::get_media().await });
+    create_effect({
+        let val = get_media_action.value();
+        move |_| {
+            if let Some(items) = val.get() {
+                for item in items {
+                    set_media.update(|m| {
+                        m.insert(item.id.clone(), item);
+                    })
+                }
+            }
         }
     });
-    let update = create_action(move |v: &(String, String, String)| {
-        let (id, field, value) = v.clone();
+    get_media_action.dispatch(());
+    let update_item_action = create_action(|update: &MediaUpdate| {
+        let u = update.clone();
         async move {
-            match client::update_media(id.clone(), field.clone(), value.clone()).await {
-                Ok(true) => Some((id, field, value)),
+            match client::update_media(u.id.clone(), u.field.clone(), u.value.clone()).await {
+                Ok(true) => Some(u),
                 _ => None,
             }
         }
     });
-    let update_value = update.value();
-    create_effect(move |_| {
-        if let Some((id, field, value)) = update_value.get().flatten() {
-            if let Some(item) = media
-                .get_untracked()
-                .into_iter()
-                .find(|item| item.get_untracked().id == id)
-            {
-                item.update(move |item| match field.as_str() {
-                    "title" => item.title = value,
-                    "format" => item.format = value,
-                    f => log!("unknown field: {}", f),
+    create_effect({
+        let val = update_item_action.value();
+        move |_| {
+            if let Some(u) = val.get().flatten() {
+                set_media.update(|m| {
+                    if let Some(item) = m.get_mut(&u.id) {
+                        item.update(u.field, u.value)
+                    }
                 })
             }
         }
     });
+    let new_media_source = client::new_media();
+    let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
+    create_effect(move |_| {
+        if let Some(item) = new_media_source.get() {
+            let id = item.id.clone();
+            set_media.update(|m| {
+                m.insert(id.clone(), item.clone());
+            });
+            set_new_media.set(Some((id, item)))
+        }
+    });
+    provide_context(update_item_action);
     provide_context(media);
-    provide_context(update);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -103,10 +108,10 @@ pub fn App() -> impl IntoView {
                             <a href=path("")>"Home"</a>
                         </li>
                         <li>
-                            <a href=path("videos")>"Videos"</a>
+                            <a href=path("video")>"Videos"</a>
                         </li>
                         <li>
-                            <a href=path("images")>"Images"</a>
+                            <a href=path("image")>"Images"</a>
                         </li>
                     </ul>
                 </nav>
@@ -123,18 +128,30 @@ pub fn App() -> impl IntoView {
 
                     </div>
                 </div>
+                <NotificationTray message=move || {
+                    new_media
+                        .get()
+                        .map(|(id, item)| {
+                            view! {
+                                <a href=path(
+                                    &format!("{}/{}", item.kind(), id),
+                                )>"New Media! " {item.title}</a>
+                            }
+                                .into_view()
+                        })
+                }/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
-                        path="videos"
+                        path="video"
                         view=|| {
                             view! {
                                 <div class="dashboard">
                                     <Selector
-                                        path="videos".to_string()
+                                        path="video".to_string()
                                         filter=|search, item| {
                                             item.title.to_lowercase().contains(&search.to_lowercase())
-                                                && video_filter(&item)
+                                                && item.kind() == "video"
                                         }
                                     />
 
@@ -144,58 +161,50 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route path="" view=|| view! { <p>"No Video Selected"</p> }/>
+                        <Route path="" view=|| view! {}/>
                         <Route
                             path=":id"
                             view=move || {
                                 view! {
-                                    <Editor
-                                        filter=video_filter
-                                        render=|item| {
-                                            view! {
-                                                <video controls>
-                                                    <source src=item.url/>
-                                                </video>
-                                            }
+                                    <Editor render=|url| {
+                                        view! {
+                                            <video controls>
+                                                <source src=url/>
+                                            </video>
                                         }
-                                    />
+                                    }/>
                                 }
                             }
                         />
 
                     </Route>
                     <Route
-                        path="images"
+                        path="image"
                         view=|| {
                             view! {
                                 <div class="dashboard">
-                                    <div class="selector">
-                                        <Selector
-                                            path="images".to_string()
-                                            filter=|search, item| {
-                                                item.title.to_lowercase().contains(&search.to_lowercase())
-                                                    && image_filter(&item)
-                                            }
-                                        />
+                                    <Selector
+                                        path="image".to_string()
+                                        filter=|search, item| {
+                                            item.title.to_lowercase().contains(&search.to_lowercase())
+                                                && item.kind() == "image"
+                                        }
+                                    />
 
-                                    </div>
                                     <Outlet/>
                                 </div>
                             }
                         }
                     >
 
-                        <Route path="" view=|| view! { <p>"No Image Selected"</p> }/>
+                        <Route path="" view=|| view! {}/>
                         <Route
                             path=":id"
                             view=move || {
                                 view! {
-                                    <Editor
-                                        filter=image_filter
-                                        render=|item| {
-                                            view! { <img src=item.url/> }
-                                        }
-                                    />
+                                    <Editor render=|url| {
+                                        view! { <img src=url/> }
+                                    }/>
                                 }
                             }
                         />
@@ -205,19 +214,5 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
-    }
-}
-
-fn video_filter(m: &&MediaItem) -> bool {
-    match m.format.as_str() {
-        "mp4" | "webm" | "mkv" | "ogg" => true,
-        _ => false,
-    }
-}
-
-fn image_filter(m: &&MediaItem) -> bool {
-    match m.format.as_str() {
-        "jpg" | "jpeg" | "png" | "webp" => true,
-        _ => false,
     }
 }

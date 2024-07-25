@@ -1,4 +1,5 @@
 use crate::{data::MediaItem, log};
+use leptos::*;
 
 #[inline]
 fn origin() -> String {
@@ -63,4 +64,12 @@ pub async fn upload_file(file: web_sys::File) {
             return;
         }
     };
+}
+
+pub fn new_media() -> Signal<Option<MediaItem>> {
+    let event_source = leptos_use::use_event_source::<MediaItem, leptos_use::utils::JsonCodec>(
+        &format!("{}/api/events/media", origin()),
+    );
+    create_effect(move |_| log!("{:?}", event_source.data.get()));
+    event_source.data
 }

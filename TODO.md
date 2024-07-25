@@ -8,10 +8,12 @@
     - [x] Select should preserve scroll
 - [x] Filter media in selector by query
 - [x] Media detail on hover
-- [ ] Toaster notifications
-    - [ ] new media
+- [x] notifications
+    - [x] new media
 - [x] Uploads
-    
+- [ ] hightlight new media items
+- [ ] improve notification tray look and feel
+
 ### API
 
 - [ ] Persist storage on server
@@ -20,10 +22,18 @@
     - [ ] on-disk kv storage
     - [ ] sqlite storage
     - [ ] garbage collection instead of deletion
-- [ ] Improve metadata automation
+- [x] Improve metadata automation
     - [x] `ffprobe` to mine metadata
     - ~~[ ] Use collections for nested directories~~
     - [x] Recurse directories for media discovery
+
+### Protocol
+
+- [ ] Bidi communication
+    - [ ] Send ack for accepted updates
+- [ ] Abstractions
+    - [ ] Transport (req+sse, ws, quic)
+    - [ ] Remotes (servers, peers)
     
 ## Maintenance
 
@@ -42,7 +52,7 @@
     - [ ] Resumable
     - [ ] Upload progress bars
 - [ ] Use object storage
-- [ ] Alternative protocols (ws,quic)
+- ~~[ ] Alternative protocols (ws,quic)~~
 - [ ] API tests
 
 ## PR
@@ -50,11 +60,3 @@
 - [x] Dry demo 
 - [ ] User docs
 - [x] GitHub pages automation
-
-## Under Consideration
-
-- [x] better data model and sync procedure (CRDT?)
-    - [x] database in browser storage
-    - [x] only pull out-of-date items from server
-    - [ ] ~~treat browser storage as write-back cache~~
-- [ ] ~~Consider HTTP/2 for event streams~~
