@@ -33,8 +33,6 @@ type Item struct {
 	Format string
 }
 
-type Event struct{}
-
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	if MEDIA_SERVER_URL == "" {
