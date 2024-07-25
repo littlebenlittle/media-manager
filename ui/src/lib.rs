@@ -43,6 +43,48 @@ pub(crate) fn path(p: &str) -> String {
     }
 }
 
+fn media(transport: impl Transport) -> (Signal<MediaCollection>, WriteSignal<MediaEvent>) {
+    use MediaEvent::{Assign, Forget, Null};
+    let (coll, set_coll) = create_signal(MediaCollection::default());
+    let assign = |id, item| set_coll.update(|coll| coll.assign(id, item));
+    let forget = set_coll.update(|coll| coll.forget(id));
+    let ack = create_action(move |id: &ID| {
+        let id = id.clone();
+        async move { transport.ack(id).await }
+    });
+    create_effect({
+        let event: Signal<MediaEvent> = transport.subscribe::<MediaEvent>();
+        move |_| match event.get() {
+            Assign(id, item) => {
+                assign(id, item);
+                ack.dispatch(id);
+            }
+            Forget(id) => {
+                forget(id);
+                ack.dispatch(id);
+            }
+            Null => {}
+        }
+    });
+    let (event, set_event) = create_signal(Null);
+    let send_action = create_action(move |ev: &MediaEvent| {
+        let ev = ev.clone();
+        async move { transport.send(ev).await }
+    });
+    create_effect(|_| send_action.dispatch(event.get()));
+    create_effect({
+        let val = send_action.value();
+        |_| {
+            match val {
+                Assign(id, item) => assign(id, item),
+                Forget(id) => forget(id),
+                Null => {} // transport rejected update
+            }
+        }
+    });
+    return (coll.into(), set_event);
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     let (media, set_media) = create_signal(HashMap::<String, MediaItem>::new());
