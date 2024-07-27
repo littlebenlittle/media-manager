@@ -1,21 +1,20 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
+mod client;
+mod collection;
+mod components;
+mod data;
+mod pages;
+mod transport;
 
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
-// Modules
-mod client;
-mod components;
-mod data;
-mod pages;
-
-use data::{MediaItem, MediaUpdate};
-
+use collection::{MediaCollection, MediaEvent, ID};
 use components::dashboard::{Editor, Selector};
 use components::notification_tray::NotificationTray;
+use transport::{ReqSSETransport, Transport};
 
 #[macro_export]
 macro_rules! log {
@@ -43,99 +42,49 @@ pub(crate) fn path(p: &str) -> String {
     }
 }
 
-fn media(transport: impl Transport) -> (Signal<MediaCollection>, WriteSignal<MediaEvent>) {
-    use MediaEvent::{Assign, Forget, Null};
+fn media<T: Transport>(
+    transport: T,
+) -> (
+    Signal<MediaCollection>,
+    Signal<Option<MediaEvent>>,
+    Action<MediaEvent, Result<MediaEvent, <T as Transport>::Error>>,
+) {
     let (coll, set_coll) = create_signal(MediaCollection::default());
-    let assign = |id, item| set_coll.update(|coll| coll.assign(id, item));
-    let forget = set_coll.update(|coll| coll.forget(id));
-    let ack = create_action(move |id: &ID| {
-        let id = id.clone();
-        async move { transport.ack(id).await }
-    });
+    let event = transport.subscribe();
     create_effect({
-        let event: Signal<MediaEvent> = transport.subscribe::<MediaEvent>();
-        move |_| match event.get() {
-            Assign(id, item) => {
-                assign(id, item);
-                ack.dispatch(id);
-            }
-            Forget(id) => {
-                forget(id);
-                ack.dispatch(id);
-            }
-            Null => {}
-        }
-    });
-    let (event, set_event) = create_signal(Null);
-    let send_action = create_action(move |ev: &MediaEvent| {
-        let ev = ev.clone();
-        async move { transport.send(ev).await }
-    });
-    create_effect(|_| send_action.dispatch(event.get()));
-    create_effect({
-        let val = send_action.value();
-        |_| {
-            match val {
-                Assign(id, item) => assign(id, item),
-                Forget(id) => forget(id),
-                Null => {} // transport rejected update
-            }
-        }
-    });
-    return (coll.into(), set_event);
-}
-
-#[component]
-pub fn App() -> impl IntoView {
-    let (media, set_media) = create_signal(HashMap::<String, MediaItem>::new());
-    let get_media_action = create_action(|_: &()| async move { client::get_media().await });
-    create_effect({
-        let val = get_media_action.value();
         move |_| {
-            if let Some(items) = val.get() {
-                for item in items {
-                    set_media.update(|m| {
-                        m.insert(item.id.clone(), item);
-                    })
-                }
-            }
-        }
-    });
-    get_media_action.dispatch(());
-    let update_item_action = create_action(|update: &MediaUpdate| {
-        let u = update.clone();
-        async move {
-            match client::update_media(u.id.clone(), u.field.clone(), u.value.clone()).await {
-                Ok(true) => Some(u),
-                _ => None,
-            }
-        }
-    });
-    create_effect({
-        let val = update_item_action.value();
-        move |_| {
-            if let Some(u) = val.get().flatten() {
-                set_media.update(|m| {
-                    if let Some(item) = m.get_mut(&u.id) {
-                        item.update(u.field, u.value)
-                    }
+            if let Some(ev) = event.get() {
+                set_coll.update(|coll| match coll.handle(ev) {
+                    Ok(_) => {}
+                    Err(e) => log!("{:?}", e),
                 })
             }
         }
     });
-    let new_media_source = client::new_media();
-    let (new_media, set_new_media) = create_signal(None::<(String, MediaItem)>);
-    create_effect(move |_| {
-        if let Some(item) = new_media_source.get() {
-            let id = item.id.clone();
-            set_media.update(|m| {
-                m.insert(id.clone(), item.clone());
-            });
-            set_new_media.set(Some((id, item)))
+    let send_action = create_action(move |ev: &MediaEvent| {
+        let ev = ev.clone();
+        async move { transport.send(ev).await }
+    });
+    create_effect({
+        let val = send_action.value();
+        move |_| match val.get() {
+            Some(Ok(ev)) => set_coll.update(|coll| match coll.handle(ev) {
+                Err(e) => log!("{:?}", e),
+                _ => {}
+            }),
+            Some(Err(e)) => log!("{:?}", e),
+            None => {}
         }
     });
-    provide_context(update_item_action);
+    return (coll.into(), event, send_action);
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+    let (media, remote_event, emit_event) = media(ReqSSETransport::new());
     provide_context(media);
+    provide_context(Box::new(remote_event));
+    provide_context(Box::new(emit_event));
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -171,16 +120,19 @@ pub fn App() -> impl IntoView {
                     </div>
                 </div>
                 <NotificationTray message=move || {
-                    new_media
-                        .get()
-                        .map(|(id, item)| {
-                            view! {
-                                <a href=path(
-                                    &format!("{}/{}", item.kind(), id),
-                                )>"New Media! " {item.title}</a>
-                            }
-                                .into_view()
-                        })
+                    match remote_event() {
+                        Some(MediaEvent::Create(_, item)) => {
+                            Some(
+                                view! {
+                                    <a href=path(
+                                        &(item.format.clone() + "/" + &item.id),
+                                    )>{item.title}</a>
+                                }
+                                    .into_view(),
+                            )
+                        }
+                        _ => None,
+                    }
                 }/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>

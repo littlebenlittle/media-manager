@@ -25,10 +25,3 @@ impl MediaItem {
         }
     }
 }
-
-#[derive(Clone)]
-pub struct MediaUpdate {
-    pub id: String,
-    pub field: String,
-    pub value: String,
-}

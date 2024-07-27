@@ -3,7 +3,13 @@ use std::collections::HashMap;
 use leptos::*;
 use leptos_router::*;
 
-use crate::{components::ClickToEdit, data::MediaItem, log, MediaUpdate};
+use crate::{
+    collection::{MediaCollection, MediaEvent},
+    components::ClickToEdit,
+    data::MediaItem,
+    log,
+    transport::{ReqSSETransport, Transport},
+};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
@@ -15,7 +21,7 @@ where
 {
     let query = use_query_map();
     let search = move || query().get("q").cloned().unwrap_or_default();
-    let media = use_context::<ReadSignal<HashMap<String, MediaItem>>>().unwrap();
+    let media = use_context::<Signal<MediaCollection>>().unwrap();
     view! {
         <Form method="GET" action="." class="search">
             <label>
@@ -128,7 +134,10 @@ where
 fn DetailTable(item: MediaItem) -> impl IntoView {
     let params = use_params_map();
     let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let update = use_context::<Action<MediaUpdate, Option<MediaUpdate>>>().unwrap();
+    let update = use_context::<
+        Action<MediaEvent, Result<MediaEvent, <ReqSSETransport as Transport>::Error>>,
+    >()
+    .unwrap();
     view! {
         <table>
             <tr>
