@@ -100,11 +100,11 @@ where
     R: Fn(String) -> IV + Copy + 'static,
     IV: IntoView,
 {
-    let media = use_context::<ReadSignal<HashMap<String, MediaItem>>>().unwrap();
+    let media = use_context::<Signal<MediaCollection>>().unwrap();
     let params = use_params_map();
     let item = move || {
         let id = params.with(|p| p.get("id").unwrap().clone());
-        media.with(|m| m.get(&id).cloned())
+        media.with(|m| m.get(&id.into()).cloned())
     };
     let url = create_memo(move |_| item().map(|i| i.url));
     view! {
@@ -133,11 +133,8 @@ where
 #[component]
 fn DetailTable(item: MediaItem) -> impl IntoView {
     let params = use_params_map();
-    let id = move || params.with(|p| p.get("id").unwrap().clone());
-    let update = use_context::<
-        Action<MediaEvent, Result<MediaEvent, <ReqSSETransport as Transport>::Error>>,
-    >()
-    .unwrap();
+    let id = move || params.with(|p| p.get("id").unwrap().clone().into());
+    let update = use_context::<WriteSignal<MediaEvent>>().unwrap();
     view! {
         <table>
             <tr>
@@ -149,7 +146,7 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
                             value=item.title.clone()
                             onset=move |value| {
                                 update
-                                    .dispatch(MediaUpdate {
+                                    .set(MediaEvent::Update {
                                         id: id(),
                                         field: "title".to_string(),
                                         value,
@@ -170,7 +167,7 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
                             value=item.format.clone()
                             onset=move |value| {
                                 update
-                                    .dispatch(MediaUpdate {
+                                    .set(MediaEvent::Update {
                                         id: id(),
                                         field: "format".to_string(),
                                         value,
@@ -187,7 +184,7 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
                 <td>"url"</td>
                 <td>
                     <span class="media-url">
-                        <a download=download_name(&item) href=item.url.clone()>
+                        <a download=item.download_name() href=item.url.clone()>
                             <button>"Download"</button>
                         </a>
 
@@ -209,13 +206,4 @@ fn DetailTable(item: MediaItem) -> impl IntoView {
 
         </table>
     }
-}
-
-fn download_name(item: &MediaItem) -> String {
-    if let Some(pos) = item.title.rfind(".") {
-        if &item.title[pos..] == &item.format {
-            return item.title.clone();
-        }
-    }
-    format!("{}.{}", item.title, item.format)
 }

@@ -1,13 +1,17 @@
-use core::fmt;
 use std::collections::HashMap;
 
-use js_sys::IntoIter;
 use serde::{Deserialize, Serialize};
 
 use crate::data::MediaItem;
 
-#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct ID(String);
+
+impl From<String> for ID {
+    fn from(value: String) -> Self {
+        ID(value)
+    }
+}
 
 impl std::fmt::Display for ID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -24,10 +28,16 @@ impl MediaCollection {
     pub fn handle(&mut self, ev: MediaEvent) -> anyhow::Result<()> {
         use MediaEvent::*;
         match ev {
+            Sync(map) => {
+                self.items = map
+                    .into_iter()
+                    .map(|item| (item.id.clone().into(), item))
+                    .collect()
+            }
             Create(id, item) => {
                 self.items.insert(id, item);
             }
-            Update(id, field, value) => {
+            Update { id, field, value } => {
                 if let Some(item) = self.items.get_mut(&id) {
                     item.update(field, value)
                 }
@@ -38,6 +48,10 @@ impl MediaCollection {
             Null => {}
         }
         Ok(())
+    }
+
+    pub fn get(&self, id: &ID) -> Option<&MediaItem> {
+        self.items.get(id)
     }
 }
 
@@ -57,10 +71,15 @@ impl Default for MediaCollection {
     }
 }
 
-#[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MediaEvent {
+    Sync(Vec<MediaItem>),
     Create(ID, MediaItem),
-    Update(ID, String, String),
+    Update {
+        id: ID,
+        field: String,
+        value: String,
+    },
     Forget(ID),
     Null,
 }

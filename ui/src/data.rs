@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct MediaItem {
     pub id: String,
     pub url: String,
@@ -23,5 +23,14 @@ impl MediaItem {
             "format" => self.format = value,
             _ => {}
         }
+    }
+
+    pub fn download_name(&self) -> String {
+        if let Some(pos) = self.title.rfind(".") {
+            if &self.title[pos..] == &self.format {
+                return self.title.clone();
+            }
+        }
+        format!("{}.{}", self.title, self.format)
     }
 }

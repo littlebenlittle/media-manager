@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
@@ -73,13 +74,17 @@ func main() {
 			mu.Lock()
 			log.Printf("clients: %d", len(clients))
 			for client := range clients {
-				client <- item
+				client <- gin.H{"Create": []any{item["id"], item}}
 			}
 			mu.Unlock()
 		case fsnotify.Rename, fsnotify.Remove:
 			log.Printf("remove %s", ev.Name)
 			id := path_to_id[ev.Name]
-			if err := media.Drop(id); err != nil {
+			if err := media.Drop(id); err == nil {
+				for client := range clients {
+					client <- gin.H{"Forget": id}
+				}
+			} else {
 				log.Print(err)
 			}
 		}
@@ -88,31 +93,74 @@ func main() {
 	router := gin.Default()
 	add_collection(router, media, "media")
 
-	router.GET("/events/media", func(c *gin.Context) {
+	router.GET("/events", func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "text/event-stream")
 		c.Writer.Header().Set("Cache-Control", "no-cache")
 		c.Writer.Header().Set("Connection", "keep-alive")
 		c.Writer.Header().Set("Transfer-Encoding", "chunked")
+		c.Writer.Header().Set("X-Accel-Buffering", "no")
 		ch := make(chan gin.H)
 		log.Printf("new client")
 		mu.Lock()
 		clients[ch] = struct{}{}
 		mu.Unlock()
-		defer func() {
-			log.Printf("closing client channel")
-			mu.Lock()
-			close(ch)
-			delete(clients, ch)
-			mu.Unlock()
-		}()
+		// defer func() {
+		// 	log.Printf("closing client channel")
+		// 	mu.Lock()
+		// 	close(ch)
+		// 	delete(clients, ch)
+		// 	mu.Unlock()
+		// }()
+		t := make(chan struct{})
+		ev := make(chan gin.H)
+		sync := true
 		c.Stream(func(_ io.Writer) bool {
-			if event, ok := <-ch; ok {
-				log.Printf("sending event to client")
-				c.SSEvent("message", event)
-				log.Printf("event sent")
+			if sync {
+				log.Printf("syncing client")
+				if items, err := media.List(); err == nil {
+					res := make([]map[string]string, len(items))
+					i := 0
+					for id, item := range items {
+						res[i] = map[string]string{
+							"id":     id,
+							"url":    item.Url,
+							"title":  item.Title,
+							"format": item.Format,
+						}
+						i++
+					}
+					c.SSEvent("message", gin.H{"Sync": res})
+				}
+				sync = false
 				return true
 			}
-			return false
+			go func() {
+				time.Sleep(30 * time.Second)
+				t <- struct{}{}
+			}()
+			go func() {
+				if event, ok := <-ch; ok {
+					ev <- event
+				} else {
+					ev <- nil
+				}
+			}()
+			select {
+			case <-t:
+				// keeps proxy server from closing the connection
+				log.Printf("pinging client")
+				c.SSEvent("ping", nil)
+				return true
+			case event := <-ev:
+				if ev == nil {
+					return false
+				} else {
+					log.Printf("sending event to client")
+					c.SSEvent("message", event)
+					log.Printf("event sent")
+					return true
+				}
+			}
 		})
 	})
 

@@ -7,6 +7,8 @@ mod data;
 mod pages;
 mod transport;
 
+use std::collections::HashMap;
+
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -47,7 +49,7 @@ fn media<T: Transport>(
 ) -> (
     Signal<MediaCollection>,
     Signal<Option<MediaEvent>>,
-    Action<MediaEvent, Result<MediaEvent, <T as Transport>::Error>>,
+    WriteSignal<MediaEvent>,
 ) {
     let (coll, set_coll) = create_signal(MediaCollection::default());
     let event = transport.subscribe();
@@ -65,6 +67,8 @@ fn media<T: Transport>(
         let ev = ev.clone();
         async move { transport.send(ev).await }
     });
+    let (local_event, set_local_event) = create_signal(MediaEvent::Null);
+    create_effect(move |_| send_action.dispatch(local_event.get()));
     create_effect({
         let val = send_action.value();
         move |_| match val.get() {
@@ -76,15 +80,23 @@ fn media<T: Transport>(
             None => {}
         }
     });
-    return (coll.into(), event, send_action);
+    return (coll.into(), event, set_local_event);
 }
 
 #[component]
 pub fn App() -> impl IntoView {
     let (media, remote_event, emit_event) = media(ReqSSETransport::new());
+    log!(
+        "{}",
+        serde_json::to_string(&MediaEvent::Create(
+            collection::ID::from("blah".to_owned()),
+            data::MediaItem::default()
+        ))
+        .unwrap()
+    );
     provide_context(media);
-    provide_context(Box::new(remote_event));
-    provide_context(Box::new(emit_event));
+    provide_context(remote_event);
+    provide_context(emit_event);
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>

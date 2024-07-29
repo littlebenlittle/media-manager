@@ -13,6 +13,7 @@
 - [x] Uploads
 - [ ] hightlight new media items
 - [ ] improve notification tray look and feel
+- [ ] show/hide media view
 
 ### API
 
