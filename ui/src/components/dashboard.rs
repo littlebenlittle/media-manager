@@ -1,72 +1,102 @@
-use std::collections::HashMap;
-
 use leptos::*;
 use leptos_router::*;
 
-use crate::{
-    collection::{MediaCollection, MediaEvent},
-    components::ClickToEdit,
-    data::MediaItem,
-    log,
-    transport::{ReqSSETransport, Transport},
-};
+use crate::{collection::ID, components::ClickToEdit, Collection, Data, Metadata};
 
 #[cfg(web_sys_unstable_apis)]
 use crate::components::CopyButton;
 
 #[component]
-pub fn Selector<F>(path: String, filter: F) -> impl IntoView
-where
-    F: Fn(String, &MediaItem) -> bool + Copy + 'static,
-{
+pub fn QueryForm() -> impl IntoView {
     let query = use_query_map();
-    let search = move || query().get("q").cloned().unwrap_or_default();
-    let media = use_context::<Signal<MediaCollection>>().unwrap();
+    let search = move || query.get().get("q").cloned().unwrap_or_default();
+    let media_type = move || query.get().get("t").cloned().unwrap_or_default();
+    // TODO this should be derived from the metadata schema
     view! {
-        <Form method="GET" action="." class="search">
-            <label>
+        <Form method="GET" action="." class="query-form">
+            <label class="search">
                 "Search:"
                 <input type="search" name="q" value=search oninput="this.form.requestSubmit()"/>
             </label>
+            <fieldset class="media-type">
+                <legend>"Format:"</legend>
+                <label>
+                    "Video"
+                    <input
+                        type="radio"
+                        name="t"
+                        value="v"
+                        checked=move || media_type() == "v"
+                        oninput="this.form.requestSubmit()"
+                    />
+                </label>
+                <label>
+                    "Image"
+                    <input
+                        type="radio"
+                        name="t"
+                        value="i"
+                        checked=move || media_type() == "i"
+                        oninput="this.form.requestSubmit()"
+                    />
+                </label>
+            </fieldset>
         </Form>
+    }
+}
+
+#[component]
+pub fn Selector<F>(filter: F) -> impl IntoView
+where
+    // query string and b64-encoded metadata
+    F: Fn(ParamsMap, &Metadata) -> bool + Copy + 'static,
+{
+    let query = use_query_map();
+    let metadata = use_context::<Signal<Collection<Metadata>>>().unwrap();
+    let params = use_params_map();
+    let qid = move || params.with(|p| p.get("id").map(|s| ID::from(s.clone())));
+    view! {
         <ul class="selector">
             <For
                 each=move || {
-                    let mut media = media
+                    let mut metadata = metadata
                         .get()
                         .into_iter()
-                        .filter(|(_, m)| filter(search(), &&m))
+                        .filter(|(_, meta)| filter(query.get(), meta))
                         .collect::<Vec<_>>();
-                    media.sort_by(|(_, a), (_, b)| a.title.cmp(&b.title));
-                    media
+                    metadata.sort_by(|(_, a), (_, b)| a.title().cmp(&b.title()));
+                    metadata
                 }
 
                 key=|(id, _)| id.clone()
-                children=move |(id, item)| {
+                children=move |(id, meta)| {
+                    let href = format!(
+                        "http://localhost:8080/media/{}{}",
+                        id,
+                        query().to_query_string(),
+                    );
+                    let title = meta.title();
                     view! {
                         <a
-                            title=item.title.clone()
-                            href={
-                                let path = path.clone();
-                                move || crate::path(
-                                    &format!("{}/{}{}", path, id, query().to_query_string()),
-                                )
-                            }
+                            class:selected=Some(id) == qid()
+                            title=title.clone()
+                            href=move || crate::path(
+                                &format!("{}{}", href, query().to_query_string()),
+                            )
                         >
 
-                            <li>{item.title}</li>
+                            <li>{title}</li>
                         </a>
                     }
                 }
             />
 
         </ul>
-        <UploadForm/>
     }
 }
 
 #[component]
-fn UploadForm() -> impl IntoView {
+pub fn UploadForm() -> impl IntoView {
     let file_input = create_node_ref::<html::Input>();
     let upload = create_action(|file: &web_sys::File| {
         let file = file.clone();
@@ -95,115 +125,121 @@ fn UploadForm() -> impl IntoView {
 }
 
 #[component]
-pub fn Editor<R, IV>(render: R) -> impl IntoView
-where
-    R: Fn(String) -> IV + Copy + 'static,
-    IV: IntoView,
-{
-    let media = use_context::<Signal<MediaCollection>>().unwrap();
-    let params = use_params_map();
-    let item = move || {
-        let id = params.with(|p| p.get("id").unwrap().clone());
-        media.with(|m| m.get(&id.into()).cloned())
+pub fn MediaView() -> impl IntoView {
+    let view = || {
+        let data = use_context::<Signal<Collection<Data>>>().unwrap();
+        let params = use_params_map();
+        for (id, data) in data.get() {
+            if id == params.with(|p| p.get("id").unwrap().clone()).into() {
+                return Some(data.into_view());
+            }
+        }
+        return None;
     };
-    let url = create_memo(move |_| item().map(|i| i.url));
     view! {
         <div class="view">
             <Transition fallback=|| {
-                view! { <p>"Loading Video"</p> }
-            }>{move || { url().map(move |url| render(url).into_view()) }}</Transition>
-        </div>
-        <div class="detail">
-            <Transition fallback=|| {
-                view! { <p>"Loading Video"</p> }
-            }>
-                {move || {
-                    item()
-                        .map(|item| {
-                            view! { <DetailTable item=item/> }
-                        })
-                }}
-
-            </Transition>
+                view! { <p>"Invalid Media ID"</p> }
+            }>{view}</Transition>
         </div>
     }
 }
 
 #[allow(unexpected_cfgs)]
 #[component]
-fn DetailTable(item: MediaItem) -> impl IntoView {
+pub fn Detail() -> impl IntoView {
     let params = use_params_map();
-    let id = move || params.with(|p| p.get("id").unwrap().clone().into());
-    let update = use_context::<WriteSignal<MediaEvent>>().unwrap();
+    let id = move || params.with(|p| p.get("id").map(|s| ID::from(s.clone())));
+    let data = move || {
+        id().map(|id| {
+            use_context::<Signal<Collection<Data>>>()
+                .unwrap()
+                .with(|x| x.get(&id).cloned())
+        })
+        .flatten()
+    };
+    let metadata = move || {
+        id().map(|id| {
+            use_context::<Signal<Collection<Metadata>>>()
+                .unwrap()
+                .with(|x| x.get(&id).cloned())
+        })
+        .flatten()
+    };
+    let update = use_context::<fn(Box<dyn Fn(&mut Metadata)>)>().unwrap();
     view! {
-        <table>
-            <tr>
-                <td>"title"</td>
-                <td>
+        <div class="detail">
+            <Transition fallback=|| {
+                view! { <p>"Invalid Media ID"</p> }
+            }>
+                <table>
+                    {move || {
+                        metadata()
+                            .map(|item| {
+                                view! {
+                                    <tr>
+                                        <td>"title"</td>
+                                        <td>
+                                            <ClickToEdit
+                                                value=item.title()
+                                                onset=move |title| update(
+                                                    Box::new(move |metadata| metadata.set_title(title.clone())),
+                                                )
+                                            />
 
-                    {view! {
-                        <ClickToEdit
-                            value=item.title.clone()
-                            onset=move |value| {
-                                update
-                                    .set(MediaEvent::Update {
-                                        id: id(),
-                                        field: "title".to_string(),
-                                        value,
-                                    })
-                            }
-                        />
-                    }
-                        .into_view()}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>"format"</td>
+                                        <td>
+                                            <ClickToEdit
+                                                value=item.format()
+                                                onset=move |format| update(
+                                                    Box::new(move |metadata| {
+                                                        metadata.set_format(format.clone())
+                                                    }),
+                                                )
+                                            />
 
-                </td>
-            </tr>
-            <tr>
-                <td>"format"</td>
-                <td>
+                                        </td>
+                                    </tr>
+                                }
+                            })
+                    }}
+                    {move || {
+                        data()
+                            .map(|data| {
+                                view! {
+                                    <tr>
+                                        <td>"url"</td>
+                                        <td>
+                                            <span class="media-url">
+                                                <a download=data.download_name() href=data.url()>
+                                                    <button>"Download"</button>
+                                                </a>
 
-                    {view! {
-                        <ClickToEdit
-                            value=item.format.clone()
-                            onset=move |value| {
-                                update
-                                    .set(MediaEvent::Update {
-                                        id: id(),
-                                        field: "format".to_string(),
-                                        value,
-                                    })
-                            }
-                        />
-                    }
-                        .into_view()}
+                                                {
+                                                    #[cfg(web_sys_unstable_apis)]
+                                                    view! {
+                                                        <span>
+                                                            <CopyButton value=data.url()/>
+                                                        </span>
+                                                    }
+                                                }
 
-                </td>
-            </tr>
+                                                <span class="url-text" title=data.url()>
+                                                    {data.url()}
+                                                </span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            })
+                    }}
 
-            <tr>
-                <td>"url"</td>
-                <td>
-                    <span class="media-url">
-                        <a download=item.download_name() href=item.url.clone()>
-                            <button>"Download"</button>
-                        </a>
+                </table>
 
-                        {
-                            #[cfg(web_sys_unstable_apis)]
-                            view! {
-                                <span>
-                                    <CopyButton value=item.url.clone()/>
-                                </span>
-                            }
-                        }
-
-                        <span class="url-text" title=item.url.clone()>
-                            {item.url.clone()}
-                        </span>
-                    </span>
-                </td>
-            </tr>
-
-        </table>
+            </Transition>
+        </div>
     }
 }

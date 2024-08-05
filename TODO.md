@@ -17,6 +17,7 @@
 
 ### API
 
+- [ ] Websocket-based protocol
 - [ ] Persist storage on server
     - [x] storage abstraction
     - [x] in-mem kv storage
@@ -53,7 +54,6 @@
     - [ ] Resumable
     - [ ] Upload progress bars
 - [ ] Use object storage
-- ~~[ ] Alternative protocols (ws,quic)~~
 - [ ] API tests
 
 ## PR

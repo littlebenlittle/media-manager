@@ -15,16 +15,26 @@ services:
   #   - data:/downloads/complete:rw
   #   - incomplete:/downloads/incomplete:rw
   #   - config:/config:rw
-  api:
+  fsnotifier:
     build:
-      context: ./api
-      dockerfile: Containerfile
+      context: ./fsnotifier
+      dockerfile: Containerfile.dev
     restart: always
-    working_dir: /api
+    working_dir: /fsnotifier
     environment:
     - MEDIA_SERVER_URL=http://localhost:8080/media
     volumes:
     - data:/data:ro
+    - ./fsnotifier:/fsnotifier:rw
+    - gopath:/go:rw
+    - gocache:/root/.cache/go:rw
+  api:
+    build:
+      context: ./api
+      dockerfile: Containerfile.dev
+    restart: always
+    working_dir: /api
+    volumes:
     - ./api:/api:rw
     - gopath:/go:rw
     - gocache:/root/.cache/go:rw

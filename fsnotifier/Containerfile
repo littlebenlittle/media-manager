@@ -4,8 +4,9 @@ WORKDIR /src
 COPY go.mod go.sum .
 RUN go mod download
 COPY . .
-RUN go build -o /api .
+RUN go build -o /fsnotifier .
 
 FROM docker.io/library/alpine:latest
-COPY --from=BUILDER /api /api
-CMD [ "/api" ]
+RUN apk update && apk add ffmpeg
+COPY --from=BUILDER /fsnotifier /fsnotifier
+CMD [ "/fsnotifier" ]

@@ -1,5 +1,14 @@
-pub mod dashboard;
-pub mod notification_tray;
+mod detail;
+mod notification_tray;
+mod query_form;
+mod selector;
+mod upload_form;
+
+pub use detail::Detail;
+pub use notification_tray::NotificationTray;
+pub use query_form::QueryForm;
+pub use selector::Selector;
+pub use upload_form::UploadForm;
 
 use leptos::*;
 

@@ -3,20 +3,15 @@
 mod client;
 mod collection;
 mod components;
-mod data;
 mod pages;
-mod transport;
-
-use std::collections::HashMap;
 
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
-use collection::{MediaCollection, MediaEvent, ID};
-use components::dashboard::{Editor, Selector};
-use components::notification_tray::NotificationTray;
-use transport::{ReqSSETransport, Transport};
+use collection::{Collection, ID};
+use components::{Detail, NotificationTray, QueryForm, Selector, UploadForm};
+use serde::{Deserialize, Serialize};
 
 #[macro_export]
 macro_rules! log {
@@ -44,59 +39,70 @@ pub(crate) fn path(p: &str) -> String {
     }
 }
 
-fn media<T: Transport>(
-    transport: T,
-) -> (
-    Signal<MediaCollection>,
-    Signal<Option<MediaEvent>>,
-    WriteSignal<MediaEvent>,
-) {
-    let (coll, set_coll) = create_signal(MediaCollection::default());
-    let event = transport.subscribe();
-    create_effect({
-        move |_| {
-            if let Some(ev) = event.get() {
-                set_coll.update(|coll| match coll.handle(ev) {
-                    Ok(_) => {}
-                    Err(e) => log!("{:?}", e),
-                })
-            }
-        }
-    });
-    let send_action = create_action(move |ev: &MediaEvent| {
-        let ev = ev.clone();
-        async move { transport.send(ev).await }
-    });
-    let (local_event, set_local_event) = create_signal(MediaEvent::Null);
-    create_effect(move |_| send_action.dispatch(local_event.get()));
-    create_effect({
-        let val = send_action.value();
-        move |_| match val.get() {
-            Some(Ok(ev)) => set_coll.update(|coll| match coll.handle(ev) {
-                Err(e) => log!("{:?}", e),
-                _ => {}
-            }),
-            Some(Err(e)) => log!("{:?}", e),
-            None => {}
-        }
-    });
-    return (coll.into(), event, set_local_event);
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+enum StoreMsg {
+    Exists { data: String, metadata: String },
+    Forget { data: String },
+    Errors(Vec<String>),
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+enum StoreReq {
+    Exists { data: Data, metadata: Metadata },
+    Forget { data: Data },
+    Sync,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+struct Data(String);
+
+impl Data {
+    pub fn url(&self) -> String {
+        todo!()
+    }
+    pub fn download_name(&self) -> String {
+        todo!()
+    }
+}
+
+impl IntoView for Data {
+    fn into_view(self) -> View {
+        view! { <p>"Data"</p> }.into_view()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+struct Metadata(String);
+
+impl Metadata {
+    pub fn title(&self) -> String {
+        todo!()
+    }
+    pub fn with_title(&self, title: String) -> Self {
+        todo!()
+    }
+    pub fn set_title(&mut self, title: String) {
+        todo!()
+    }
+    pub fn format(&self) -> String {
+        todo!()
+    }
+    pub fn with_format(&self, format: String) -> Self {
+        todo!()
+    }
+    pub fn set_format(&mut self, format: String) {
+        todo!()
+    }
+    pub fn matches(&self, query: ParamsMap) -> bool {
+        todo!()
+    }
 }
 
 #[component]
 pub fn App() -> impl IntoView {
-    let (media, remote_event, emit_event) = media(ReqSSETransport::new());
-    log!(
-        "{}",
-        serde_json::to_string(&MediaEvent::Create(
-            collection::ID::from("blah".to_owned()),
-            data::MediaItem::default()
-        ))
-        .unwrap()
-    );
-    provide_context(media);
-    provide_context(remote_event);
-    provide_context(emit_event);
+    // provide_context(data);
+    // provide_context(metadata);
+    // provide_context(Box::new(|id: ID, update: Box<dyn Fn(&mut Metadata)>| media));
     provide_meta_context();
     view! {
         <Html lang="en" dir="ltr" attr:data-theme="light"/>
@@ -131,86 +137,49 @@ pub fn App() -> impl IntoView {
 
                     </div>
                 </div>
-                <NotificationTray message=move || {
-                    match remote_event() {
-                        Some(MediaEvent::Create(_, item)) => {
-                            Some(
-                                view! {
-                                    <a href=path(
-                                        &(item.format.clone() + "/" + &item.id),
-                                    )>{item.title}</a>
-                                }
-                                    .into_view(),
-                            )
-                        }
-                        _ => None,
-                    }
-                }/>
+                // <NotificationTray message=move || {
+                // match new_media.get() {
+                // Some(metadata) => {
+                // Some(
+                // view! { <a href=metadata.local_href()>{metadata.title()}</a> }
+                // .into_view(),
+                // )
+                // }
+                // _ => None,
+                // }
+                // }/>
                 <Routes base=option_env!("APP_BASE_PATH").unwrap_or_default().to_owned()>
                     <Route path="/" view=pages::Home/>
                     <Route
-                        path="video"
+                        path="library"
                         view=|| {
                             view! {
                                 <div class="dashboard">
-                                    <Selector
-                                        path="video".to_string()
-                                        filter=|search, item| {
-                                            item.title.to_lowercase().contains(&search.to_lowercase())
-                                                && item.kind() == "video"
-                                        }
-                                    />
-
                                     <Outlet/>
                                 </div>
                             }
                         }
                     >
 
-                        <Route path="" view=|| view! {}/>
                         <Route
                             path=":id"
                             view=move || {
                                 view! {
-                                    <Editor render=|url| {
-                                        view! {
-                                            <video controls>
-                                                <source src=url/>
-                                            </video>
-                                        }
-                                    }/>
-                                }
-                            }
-                        />
+                                    <QueryForm/>
+                                    <Selector/>
+                                    <UploadForm/>
+                                    <Transition fallback=|| {
+                                        view! { <p>"No Media Selected"</p> }
+                                    }>
+                                        {use_params_map()
+                                            .with(|p| {
+                                                p.get("id")
+                                                    .map(|s| {
+                                                        view! { <Dashboard id=ID::from(s.clone())/> }
+                                                    })
+                                            })}
 
-                    </Route>
-                    <Route
-                        path="image"
-                        view=|| {
-                            view! {
-                                <div class="dashboard">
-                                    <Selector
-                                        path="image".to_string()
-                                        filter=|search, item| {
-                                            item.title.to_lowercase().contains(&search.to_lowercase())
-                                                && item.kind() == "image"
-                                        }
-                                    />
-
-                                    <Outlet/>
-                                </div>
-                            }
-                        }
-                    >
-
-                        <Route path="" view=|| view! {}/>
-                        <Route
-                            path=":id"
-                            view=move || {
-                                view! {
-                                    <Editor render=|url| {
-                                        view! { <img src=url/> }
-                                    }/>
+                                    </Transition>
                                 }
                             }
                         />
@@ -220,5 +189,40 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
+    }
+}
+
+#[component]
+pub fn Dashboard(id: ID) -> impl IntoView {
+    let store = use_context::<Signal<Collection<(Data, Metadata)>>>().unwrap();
+    let x = move || {
+        store.with(|store| {
+            store
+                .get(&id)
+                .map(|(d, m)| (id.clone(), d.clone(), m.clone()))
+        })
+    };
+    view! {
+        <Transition fallback=|| {
+            view! { "Invalid Media ID" }
+        }>
+            {x()
+                .map(|(id, data, metadata)| {
+                    view! {
+                        <div class="view">{data.clone().into_view()}</div>
+                        <Detail
+                            data=data
+                            metadata=metadata
+                            update=move |metadata| {
+                                let id = id.clone();
+                                spawn_local(async move {
+                                    log!("set metadata: {} {:?}", id, metadata);
+                                })
+                            }
+                        />
+                    }
+                })}
+
+        </Transition>
     }
 }
